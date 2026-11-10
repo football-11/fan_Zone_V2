@@ -23,7 +23,6 @@ import {
   NationFlagArtwork,
 } from '../components/BroadcastArtwork';
 import { ContentItem } from '../types/game';
-import { resolveBzzoiroPlayerImageUrl } from '../data/bzzoiroSports';
 
 const HostConsoleBody: React.FC = () => {
   const { state, contentItems, logoutOwner, sendHostAction } = useGameSync();
@@ -619,22 +618,8 @@ const HostConsoleBody: React.FC = () => {
                             {club.shortName} × {nation.code}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 mt-1 min-w-0">
-                          {cell.owner && (() => {
-                            const photoUrl = cell.playerImageUrl || resolveBzzoiroPlayerImageUrl(cell.playerName);
-                            return photoUrl ? (
-                              <img
-                                src={photoUrl}
-                                alt={cell.playerName || 'Player'}
-                                referrerPolicy="no-referrer"
-                                className="w-6 h-6 object-contain shrink-0 drop-shadow"
-                                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                              />
-                            ) : null;
-                          })()}
-                          <div className="text-xs font-bold font-['Outfit'] truncate">
-                            {cell.owner ? cell.playerName : 'Open Square'}
-                          </div>
+                        <div className="text-xs font-bold font-['Outfit'] truncate mt-1">
+                          {cell.owner ? cell.playerName : 'Open Square'}
                         </div>
                       </button>
                     );
@@ -671,51 +656,27 @@ const HostConsoleBody: React.FC = () => {
                     Quick-Fill Valid Footballers (Tap to populate):
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {activeCellHints.map((hintName) => {
-                      const hintPhoto = resolveBzzoiroPlayerImageUrl(hintName);
-                      return (
-                        <button
-                          key={hintName}
-                          type="button"
-                          onClick={() => setSpokenPlayerName(hintName)}
-                          className="min-h-[36px] px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-emerald-300 font-medium cursor-pointer flex items-center gap-1.5"
-                        >
-                          {hintPhoto && (
-                            <img
-                              src={hintPhoto}
-                              alt=""
-                              className="w-4 h-4 object-contain shrink-0"
-                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                            />
-                          )}
-                          <span>{hintName}</span>
-                        </button>
-                      );
-                    })}
+                    {activeCellHints.map((hintName) => (
+                      <button
+                        key={hintName}
+                        type="button"
+                        onClick={() => setSpokenPlayerName(hintName)}
+                        className="min-h-[36px] px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-emerald-300 font-medium cursor-pointer"
+                      >
+                        {hintName}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div className="relative flex items-center">
+                <div>
                   <input
                     type="text"
                     value={spokenPlayerName}
                     onChange={(e) => setSpokenPlayerName(e.target.value)}
                     placeholder="Type contestant's spoken footballer name..."
-                    className="w-full min-h-[44px] pl-3.5 pr-12 py-2 rounded-xl bg-[#081326] border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-400"
+                    className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-[#081326] border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-400"
                   />
-                  {spokenPlayerName.trim() && (() => {
-                    const previewPhoto = resolveBzzoiroPlayerImageUrl(spokenPlayerName.trim());
-                    return previewPhoto ? (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center p-1 bg-slate-900/90 rounded-lg border border-slate-700">
-                        <img
-                          src={previewPhoto}
-                          alt="Preview"
-                          className="w-7 h-7 object-contain drop-shadow"
-                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                        />
-                      </div>
-                    ) : null;
-                  })()}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

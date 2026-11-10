@@ -19,7 +19,6 @@ import {
   syncGameSessionToFirestore,
   subscribeToGameSession,
 } from '../firebase';
-import { resolveBzzoiroPlayerImageUrl } from '../data/bzzoiroSports';
 
 interface OwnerAuthState {
   authenticated: boolean;
@@ -1230,7 +1229,6 @@ export const GameSyncProvider: React.FC<{
               if (!playerName) break;
               cell.owner = currentTeam;
               cell.playerName = playerName;
-              cell.playerImageUrl = payload.playerImageUrl || resolveBzzoiroPlayerImageUrl(playerName);
               ttt.rejectedFeedback = null;
               const outcome = evaluateTicTacToeBoard(ttt);
               if (outcome.winner) {

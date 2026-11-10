@@ -19,7 +19,6 @@ import {
   TicTacToeNation,
   TicTacToeState,
 } from './src/types/game.ts';
-import { resolveBzzoiroPlayerImageUrl } from './src/data/bzzoiroSports.ts';
 
 dotenv.config();
 
@@ -1099,7 +1098,6 @@ async function startServer() {
           if (!playerName) break;
           cell.owner = currentTeam;
           cell.playerName = playerName;
-          cell.playerImageUrl = payload.playerImageUrl || resolveBzzoiroPlayerImageUrl(playerName);
           ttt.rejectedFeedback = null;
 
           const outcome = evaluateTicTacToeBoard(ttt);
@@ -1355,30 +1353,6 @@ async function startServer() {
       updatedAt: dbState.session.updatedAt,
       state: dbState.session,
     });
-  });
-
-  // Bzzoiro Player Image Proxy
-  app.get('/api/bzzoiro/player-img/:id', async (req, res) => {
-    const { id } = req.params;
-    const cutout = req.query.sor !== 'false';
-    const bzzoiroUrl = `https://sports.bzzoiro.com/img/player/${id}/${cutout ? '?sor=true&bg=transparent' : ''}`;
-    try {
-      const imgRes = await fetch(bzzoiroUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        },
-      });
-      if (!imgRes.ok) {
-        return res.status(404).send('Player image not found');
-      }
-      const buffer = await imgRes.arrayBuffer();
-      res.setHeader('Content-Type', imgRes.headers.get('content-type') || 'image/png');
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      res.send(Buffer.from(buffer));
-    } catch {
-      res.status(502).send('Image proxy failed');
-    }
   });
 
   // 4. Content Bank CRUD & Media Uploads
