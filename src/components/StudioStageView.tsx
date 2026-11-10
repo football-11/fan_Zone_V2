@@ -7,6 +7,7 @@ import {
   EmojiBadgeArtwork,
   NationFlagArtwork,
 } from './BroadcastArtwork';
+import { resolveBzzoiroPlayerImageUrl } from '../data/bzzoiroSports';
 
 function formatCountdown(seconds: number): string {
   const clamped = Math.max(0, Math.min(99, Math.floor(seconds)));
@@ -678,22 +679,42 @@ export const StudioStageView: React.FC<{
                             </span>
 
                             {cell.owner ? (
-                              <>
-                                <span
-                                  className={`font-['Outfit'] font-black text-white leading-tight ${
-                                    isPreview ? 'text-[10px]' : 'text-xl lg:text-2xl'
-                                  }`}
-                                >
-                                  {cell.playerName}
-                                </span>
-                                <span
-                                  className={`mt-1 font-['Plus_Jakarta_Sans'] font-bold uppercase tracking-wider ${
-                                    isPreview ? 'text-[7px]' : 'text-xs'
-                                  } text-white/90`}
-                                >
-                                  {cell.owner === 'red' ? 'RED TEAM' : 'BLUE TEAM'}
-                                </span>
-                              </>
+                              (() => {
+                                const photoUrl =
+                                  cell.playerImageUrl ||
+                                  resolveBzzoiroPlayerImageUrl(cell.playerName);
+                                return (
+                                  <div className="relative w-full h-full flex flex-col justify-end p-1.5 overflow-hidden">
+                                    {photoUrl && (
+                                      <img
+                                        src={photoUrl}
+                                        alt={cell.playerName || 'Player Photo'}
+                                        referrerPolicy="no-referrer"
+                                        className="absolute inset-0 w-full h-full object-contain p-1 scale-135 transition-all duration-300 drop-shadow-[0_8px_24px_rgba(0,0,0,0.9)] pointer-events-none z-0"
+                                        onError={(e) => {
+                                          (e.target as HTMLElement).style.display = 'none';
+                                        }}
+                                      />
+                                    )}
+                                    <div className="relative z-10 w-full flex flex-col items-center shrink-0 bg-black/60 backdrop-blur-md rounded-lg px-2 py-1 border border-white/15 shadow-lg">
+                                      <span
+                                        className={`font-['Outfit'] font-black text-white leading-tight text-center truncate max-w-full drop-shadow-md ${
+                                          isPreview ? 'text-[9px]' : 'text-sm lg:text-xl'
+                                        }`}
+                                      >
+                                        {cell.playerName}
+                                      </span>
+                                      <span
+                                        className={`font-['Plus_Jakarta_Sans'] font-extrabold uppercase tracking-wider ${
+                                          isPreview ? 'text-[7px]' : 'text-[10px] lg:text-xs'
+                                        } text-white/90`}
+                                      >
+                                        {cell.owner === 'red' ? 'RED TEAM' : 'BLUE TEAM'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })()
                             ) : recentRejection ? (
                               <div className="flex flex-col items-center">
                                 <span
