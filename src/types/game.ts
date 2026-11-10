@@ -79,6 +79,7 @@ export interface TicTacToeCell {
   col: number; // 0..2 (Club)
   owner: TeamId | null;
   playerName: string | null;
+  playerImageUrl?: string | null;
 }
 
 export interface TicTacToeState {
