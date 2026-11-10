@@ -1,10 +1,14 @@
 {
   "session": {
     "sessionId": "fanzone-live-session",
-    "redScore": 0,
+    "redScore": 1,
     "blueScore": 0,
     "activeTeam": "red",
-    "lastScorePulse": null,
+    "lastScorePulse": {
+      "team": "red",
+      "delta": 1,
+      "timestamp": 1794304906198
+    },
     "selectedCardNumber": 1,
     "stage": "board",
     "boardDeckId": 1,
@@ -99,7 +103,8 @@
       }
     ],
     "activeMiniGame": null,
-    "updatedAt": 1794302641372
+    "updatedAt": 1794304938437,
+    "revision": 3
   },
   "contentItems": [
     {
@@ -203,7 +208,12 @@
       "category": "multiple_choice",
       "title": "Messi’s 2012 Calendar Year Goals",
       "prompt": "How many official goals did Lionel Messi score in the 2012 calendar year for club and country?",
-      "options": ["85 Goals", "91 Goals", "96 Goals", "100 Goals"],
+      "options": [
+        "85 Goals",
+        "91 Goals",
+        "96 Goals",
+        "100 Goals"
+      ],
       "answer": "91 Goals",
       "createdAt": "2026-11-10T09:24:01.372Z"
     },
@@ -212,7 +222,12 @@
       "category": "multiple_choice",
       "title": "Fastest World Cup Goal (Seconds)",
       "prompt": "In how many seconds did Hakan Şükür score the fastest goal in FIFA World Cup history in 2002?",
-      "options": ["11 Seconds", "18 Seconds", "24 Seconds", "31 Seconds"],
+      "options": [
+        "11 Seconds",
+        "18 Seconds",
+        "24 Seconds",
+        "31 Seconds"
+      ],
       "answer": "11 Seconds",
       "createdAt": "2026-11-10T09:24:01.372Z"
     },
@@ -221,7 +236,12 @@
       "category": "multiple_choice",
       "title": "Real Madrid European Cup Titles",
       "prompt": "How many UEFA Champions League / European Cup trophies had Real Madrid won after the 2024 Final at Wembley?",
-      "options": ["12 Titles", "14 Titles", "15 Titles", "17 Titles"],
+      "options": [
+        "12 Titles",
+        "14 Titles",
+        "15 Titles",
+        "17 Titles"
+      ],
       "answer": "15 Titles",
       "createdAt": "2026-11-10T09:24:01.372Z"
     },

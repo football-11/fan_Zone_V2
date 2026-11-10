@@ -28,6 +28,7 @@ type MiniGameCategory =
   | 'logo'
   | 'tictactoe'
   | 'quiz'
+  | 'multiple_choice'
   | 'number'
   | 'audio';
 type ContentCategory = Exclude<MiniGameCategory, 'tictactoe'>;
@@ -822,30 +823,32 @@ export default async function handler(req: any, res: any) {
             session.usedItemIds.push(chosen.id);
           }
 
-          session.activeMiniGame = {
-            cardNumber: card.cardNumber,
-            category: card.category,
-            categoryTitle: card.categoryTitle,
-            snapshot: {
-              itemId: chosen.id,
-              category: chosen.category,
-              title: chosen.title,
-              prompt: chosen.prompt,
-              answer: chosen.answer,
-              options: Array.isArray(chosen.options) ? [...chosen.options] : undefined,
-              mediaUrl: chosen.mediaUrl,
-              blurAmount: typeof chosen.blurAmount === 'number' ? chosen.blurAmount : 28,
-            },
-            timerSeconds: 30,
-            timerRunning: false,
-            answerRevealed: false,
-            imageUnblurred: false,
-            audioPlaying: false,
-            audioCommandTimestamp: Date.now(),
-            scored: card.scored,
-            scoreResult: card.scoreResult,
-            awardedTeam: card.awardedTeam || null,
-          };
+          if (chosen) {
+            session.activeMiniGame = {
+              cardNumber: card.cardNumber,
+              category: card.category,
+              categoryTitle: card.categoryTitle,
+              snapshot: {
+                itemId: chosen.id,
+                category: chosen.category,
+                title: chosen.title,
+                prompt: chosen.prompt,
+                answer: chosen.answer,
+                options: Array.isArray(chosen.options) ? [...chosen.options] : undefined,
+                mediaUrl: chosen.mediaUrl,
+                blurAmount: typeof chosen.blurAmount === 'number' ? chosen.blurAmount : 28,
+              },
+              timerSeconds: 30,
+              timerRunning: false,
+              answerRevealed: false,
+              imageUnblurred: false,
+              audioPlaying: false,
+              audioCommandTimestamp: Date.now(),
+              scored: card.scored,
+              scoreResult: card.scoreResult,
+              awardedTeam: card.awardedTeam || null,
+            };
+          }
         }
         break;
       }

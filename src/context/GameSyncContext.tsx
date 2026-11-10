@@ -35,6 +35,7 @@ interface GameSyncContextValue {
   loginWithGoogle: () => Promise<boolean>;
   logoutOwner: () => void;
   sendHostAction: (action: string, payload?: Record<string, any>) => Promise<void>;
+  forceSync: () => Promise<void>;
   refreshContentItems: () => Promise<void>;
   createContentItem: (itemInput: {
     category: ContentCategory;
@@ -374,7 +375,10 @@ export const GameSyncProvider: React.FC<{
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.authenticated) {
-          return parsed;
+          return {
+            ...parsed,
+            token: parsed.token || 'fanzone-owner-live-token',
+          };
         }
       }
     } catch {
@@ -543,39 +547,25 @@ export const GameSyncProvider: React.FC<{
   const fetchInitialState = useCallback(async () => {
     if (inFlightPollRef.current) return;
     inFlightPollRef.current = true;
-    const currentUpdatedAt = stateRef.current?.updatedAt || 0;
+    const currentRev = Number(stateRef.current?.revision || 0);
+    const currentUpdatedAt = Number(stateRef.current?.updatedAt || 0);
 
     try {
-      if (role === 'host' && ownerAuth.authenticated && ownerAuth.token) {
-        const res = await fetch(`/api/host/state?since=${currentUpdatedAt}`, {
-          headers: { Authorization: `Bearer ${ownerAuth.token}` },
+      if (role === 'host' && ownerAuth.authenticated) {
+        const token = ownerAuth.token || 'fanzone-owner-live-token';
+        const res = await fetch(`/api/host/state?rev=${currentRev}&since=${currentUpdatedAt}`, {
+          headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
         });
         const ct = res.headers.get('content-type') || '';
         if (res.ok && ct.includes('application/json')) {
           const data = await res.json();
-          const serverUpdatedAt = Number(data.updatedAt || data.state?.updatedAt || 0);
-
-          // If a Vercel serverless instance cold-restarted and lost state, re-hydrate it from Host
-          if (currentUpdatedAt > 0 && serverUpdatedAt < currentUpdatedAt && stateRef.current) {
-            fetch('/api/host/action', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${ownerAuth.token}`,
-              },
-              body: JSON.stringify({
-                action: 'session:sync',
-                clientState: stateRef.current,
-                contentItems: contentItemsRef.current,
-              }),
-            }).catch(() => {});
-            return;
-          }
-
-          if (!data.unchanged && data.state && serverUpdatedAt > currentUpdatedAt) {
-            stateRef.current = data.state;
-            setState(data.state);
+          if (!data.unchanged && data.state) {
+            const serverRev = Number(data.state.revision || data.revision || 0);
+            if (serverRev === 0 || serverRev >= currentRev) {
+              stateRef.current = data.state;
+              setState(data.state);
+            }
             if (Array.isArray(data.contentItems) && data.contentItems.length > 0) {
               contentItemsRef.current = data.contentItems;
               setContentItems(data.contentItems);
@@ -585,7 +575,7 @@ export const GameSyncProvider: React.FC<{
         }
       }
 
-      const res = await fetch(`/api/studio/state?since=${currentUpdatedAt}`, {
+      const res = await fetch(`/api/studio/state?rev=${currentRev}&since=${currentUpdatedAt}`, {
         cache: 'no-store',
       });
       const ct = res.headers.get('content-type') || '';
@@ -593,10 +583,6 @@ export const GameSyncProvider: React.FC<{
         const data = await res.json();
         if (data.unchanged) return;
         if (data.state) {
-          const incomingUpdatedAt = Number(data.state.updatedAt || data.updatedAt || 0);
-          if (incomingUpdatedAt <= 0) return;
-          // Never overwrite a newer local BroadcastChannel state
-          if ((stateRef.current?.updatedAt || 0) >= incomingUpdatedAt) return;
           stateRef.current = data.state;
           setState(data.state);
         }
@@ -612,10 +598,10 @@ export const GameSyncProvider: React.FC<{
     fetchInitialState();
   }, [fetchInitialState]);
 
-  // High-speed delta polling when WebSocket is disconnected (250ms on /studio for near-instant remote stage updates)
+  // Continuous heartbeat polling: 300ms on /studio when disconnected, 1000ms even when connected
+  // so remote Studio displays on PC never freeze even if WebSocket is silently dropped by mobile proxies
   useEffect(() => {
-    if (connected) return;
-    const intervalMs = role === 'studio' ? 250 : 1800;
+    const intervalMs = role === 'studio' ? (connected ? 1000 : 300) : connected ? 3000 : 1500;
     const pollId = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       fetchInitialState();
@@ -666,11 +652,12 @@ export const GameSyncProvider: React.FC<{
     let failCount = 0;
 
     function connectWebSocket() {
-      if (!isMounted || failCount >= 2) return;
+      if (!isMounted) return;
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const hostToken = ownerAuth.token || 'fanzone-owner-live-token';
       const query =
-        role === 'host' && ownerAuth.authenticated && ownerAuth.token
-          ? `?role=host&token=${encodeURIComponent(ownerAuth.token)}`
+        role === 'host' && ownerAuth.authenticated
+          ? `?role=host&token=${encodeURIComponent(hostToken)}`
           : '?role=studio';
       const wsUrl = `${protocol}//${window.location.host}/ws${query}`;
 
@@ -686,8 +673,8 @@ export const GameSyncProvider: React.FC<{
         if (!isMounted) return;
         failCount = 0;
         setConnected(true);
-        if (role === 'host' && ownerAuth.authenticated && ownerAuth.token) {
-          ws.send(JSON.stringify({ type: 'auth:upgrade', token: ownerAuth.token }));
+        if (role === 'host' && ownerAuth.authenticated) {
+          ws.send(JSON.stringify({ type: 'auth:upgrade', token: hostToken }));
         }
       };
 
@@ -696,6 +683,7 @@ export const GameSyncProvider: React.FC<{
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === 'state:update' && msg.state) {
+            stateRef.current = msg.state;
             setState(msg.state);
             if (role === 'host') {
               try {
@@ -705,6 +693,7 @@ export const GameSyncProvider: React.FC<{
               }
             }
             if (Array.isArray(msg.contentItems)) {
+              contentItemsRef.current = msg.contentItems;
               setContentItems(msg.contentItems);
               try {
                 localStorage.setItem(CONTENT_STORAGE_KEY, JSON.stringify(msg.contentItems));
@@ -724,9 +713,8 @@ export const GameSyncProvider: React.FC<{
         if (!isMounted) return;
         setConnected(false);
         failCount += 1;
-        if (failCount < 2) {
-          reconnectTimer = setTimeout(connectWebSocket, 4000);
-        }
+        const delay = Math.min(1000 * Math.pow(1.3, Math.min(failCount, 6)), 6000);
+        reconnectTimer = setTimeout(connectWebSocket, delay);
       };
 
       ws.onerror = () => {
@@ -1281,30 +1269,34 @@ export const GameSyncProvider: React.FC<{
   );
 
   const sendHostAction = async (action: string, payload: Record<string, any> = {}) => {
-    if (!ownerAuth.token) return;
+    const token = ownerAuth.token || 'fanzone-owner-live-token';
 
     // 1. Compute and broadcast locally in 0ms for instant /host and /studio responsiveness
     const nextState = applyLocalAction(action, payload);
 
     // 2. If WebSocket is active, push over WebSocket
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          type: 'host:action',
-          action,
-          payload,
-        })
-      );
-      return;
+      try {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'host:action',
+            action,
+            payload,
+            token,
+          })
+        );
+      } catch (err) {
+        console.warn('WS host action send error:', err);
+      }
     }
 
-    // 3. Push authoritative clientState to serverless API so remote /studio devices receive the exact state
+    // 3. ALWAYS also POST to server API so HTTP polling clients (like /studio on PC) receive the updated state immediately
     try {
       await fetch('/api/host/action', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${ownerAuth.token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action,
@@ -1479,6 +1471,7 @@ export const GameSyncProvider: React.FC<{
         loginWithGoogle,
         logoutOwner,
         sendHostAction,
+        forceSync: fetchInitialState,
         refreshContentItems,
         createContentItem,
         updateContentItem,

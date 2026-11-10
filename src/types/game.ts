@@ -63,6 +63,8 @@ export interface TicTacToeClub {
   id: string;
   name: string;
   shortName: string;
+  bzzoiroTeamId?: number;
+  logoUrl?: string;
 }
 
 export interface TicTacToeNation {
@@ -130,6 +132,7 @@ export interface GameSessionState {
   boardDeckId?: number;
   cards: BoardCard[];
   activeMiniGame: ActiveMiniGameState | null;
+  revision?: number;
   updatedAt: number;
 }
 
