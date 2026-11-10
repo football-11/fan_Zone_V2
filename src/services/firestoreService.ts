@@ -14,7 +14,7 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-import { ContentCategory, ContentItem } from '../types/game';
+import { ContentCategory, ContentItem, GameSessionState } from '../types/game';
 
 // Verbatim constants synced with firebase-blueprint.json and firestore.rules
 export const ID_PATTERN_REGEX = /^[a-zA-Z0-9_\-]+$/;
@@ -304,4 +304,46 @@ export async function deleteContentItemFromFirestore(itemId: string): Promise<vo
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
+}
+
+/**
+ * Persists the live GameSessionState to Firestore (/gameSessions/{sessionId}) for cross-device Vercel sync.
+ */
+export async function syncGameSessionToFirestore(session: GameSessionState): Promise<void> {
+  const sessionId = sanitizeFirestoreId(session.sessionId || 'fanzone-live-session');
+  const path = `gameSessions/${sessionId}`;
+  try {
+    // Deep clone state to ensure pure JSON serialization
+    const serialized: GameSessionState = JSON.parse(JSON.stringify(session));
+    serialized.updatedAt = Date.now();
+    await setDoc(doc(db, 'gameSessions', sessionId), serialized);
+  } catch (error) {
+    // Non-blocking fire-and-forget for live session updates
+    console.warn('Firestore session sync warning:', error);
+  }
+}
+
+/**
+ * Subscribes in real time to live GameSessionState updates from Firestore (/gameSessions/{sessionId}).
+ */
+export function subscribeToGameSession(
+  sessionId: string,
+  onUpdate: (session: GameSessionState) => void
+): Unsubscribe {
+  const safeId = sanitizeFirestoreId(sessionId || 'fanzone-live-session');
+  const path = `gameSessions/${safeId}`;
+  return onSnapshot(
+    doc(db, 'gameSessions', safeId),
+    (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as GameSessionState;
+        if (data && Array.isArray(data.cards)) {
+          onUpdate(data);
+        }
+      }
+    },
+    (error) => {
+      console.warn('Firestore session snapshot listener error:', error);
+    }
+  );
 }

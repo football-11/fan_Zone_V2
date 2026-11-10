@@ -17,6 +17,8 @@ import {
   listOwnerContentItemsFromFirestore,
   subscribeToOwnerContentItems,
   updateContentItemInFirestore,
+  syncGameSessionToFirestore,
+  subscribeToGameSession,
 } from './services/firestoreService';
 
 const app = initializeApp(firebaseConfig);
@@ -115,4 +117,6 @@ export {
   listOwnerContentItemsFromFirestore,
   subscribeToOwnerContentItems,
   deleteContentItemFromFirestore,
+  syncGameSessionToFirestore,
+  subscribeToGameSession,
 };

@@ -16,6 +16,8 @@ import {
   signInOwnerWithGoogle,
   signOutOwner,
   syncContentItemToFirestore,
+  syncGameSessionToFirestore,
+  subscribeToGameSession,
 } from '../firebase';
 
 interface OwnerAuthState {
@@ -456,9 +458,38 @@ export const GameSyncProvider: React.FC<{
           // ignore
         }
       }
+      // Direct Firestore Cloud Sync so iPad host updates PC studio display instantly on Vercel
+      if (role === 'host') {
+        syncGameSessionToFirestore(nextState).catch(() => {});
+      }
     },
-    []
+    [role]
   );
+
+  // Firestore Real-Time Cloud Listener for Cross-Device Vercel Sync (iPad <-> PC)
+  useEffect(() => {
+    const unsub = subscribeToGameSession('fanzone-live-session', (incoming) => {
+      if (!incoming || !Array.isArray(incoming.cards)) return;
+      const currentRev = Number(stateRef.current?.revision || 0);
+      const incomingRev = Number(incoming.revision || 0);
+      const currentUpdated = Number(stateRef.current?.updatedAt || 0);
+      const incomingUpdated = Number(incoming.updatedAt || 0);
+
+      if (incomingRev > currentRev || (incomingRev === currentRev && incomingUpdated > currentUpdated)) {
+        stateRef.current = incoming;
+        setState(incoming);
+        try {
+          localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(incoming));
+        } catch {
+          // ignore
+        }
+      }
+    });
+
+    return () => {
+      if (unsub) unsub();
+    };
+  }, []);
 
   // Cross-Tab BroadcastChannel + Storage Event Listener for instant 0ms /host <-> /studio sync on Vercel
   useEffect(() => {

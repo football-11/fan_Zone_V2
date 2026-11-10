@@ -59,6 +59,39 @@
         }
       },
       "required": ["id", "category", "prompt", "answer", "ownerId", "createdAt"]
+    },
+    "GameSession": {
+      "title": "GameSession",
+      "description": "Live broadcast game session state for real-time host-to-studio synchronization across devices.",
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "redScore": {
+          "type": "number"
+        },
+        "blueScore": {
+          "type": "number"
+        },
+        "activeTeam": {
+          "type": "string"
+        },
+        "selectedCardNumber": {
+          "type": "number"
+        },
+        "stage": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "number"
+        }
+      },
+      "required": ["sessionId", "redScore", "blueScore", "activeTeam", "selectedCardNumber", "stage", "updatedAt"]
     }
   },
   "firestore": {
@@ -67,6 +100,12 @@
         "$ref": "#/entities/ContentItem"
       },
       "description": "Persistent content items owned by the studio broadcast owner"
+    },
+    "/gameSessions/{sessionId}": {
+      "schema": {
+        "$ref": "#/entities/GameSession"
+      },
+      "description": "Live broadcast session state synchronized between host console and studio displays"
     }
   }
 }

@@ -80,5 +80,10 @@ service cloud.firestore {
         isValidId(itemId) &&
         (existing().ownerId == request.auth.uid || isAdmin());
     }
+
+    match /gameSessions/{sessionId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }
