@@ -127,6 +127,35 @@ interface ActiveMiniGameState {
   ticTacToe?: TicTacToeState;
 }
 
+interface CardSlotCustomization {
+  emojiImageUrl?: string;
+  emojiLabel?: string;
+  emojiScale?: number;
+  cardFrontBgUrl?: string;
+  cardBackBgUrl?: string;
+}
+
+interface StudioCustomization {
+  showTitlePrimary?: string;
+  showTitleSecondary?: string;
+  showEyebrow?: string;
+  showLogoUrl?: string;
+  stageBgUrl?: string;
+  cardFrontBgUrl?: string;
+  cardBackBgUrl?: string;
+  cardAccentColor?: string;
+  hideEmojiLabels?: boolean;
+  emojiScale?: number;
+  miniGameIconScale?: number;
+  redTeamName?: string;
+  redTeamLogoUrl?: string;
+  blueTeamName?: string;
+  blueTeamLogoUrl?: string;
+  cardSlots?: Record<number, CardSlotCustomization>;
+  miniGameIcons?: Partial<Record<MiniGameCategory, string>>;
+  miniGameIconScales?: Partial<Record<MiniGameCategory, number>>;
+}
+
 interface GameSessionState {
   sessionId: string;
   redScore: number;
@@ -138,10 +167,11 @@ interface GameSessionState {
     timestamp: number;
   } | null;
   selectedCardNumber: number;
-  stage: 'board' | 'minigame';
+  stage: 'home' | 'board' | 'minigame';
   boardDeckId?: number;
   cards: BoardCard[];
   activeMiniGame: ActiveMiniGameState | null;
+  customization?: StudioCustomization;
   usedItemIds?: string[];
   autoSelectionEnabled?: boolean;
   updatedAt: number;
@@ -282,14 +312,15 @@ function createFreshTicTacToeState(startingTeam: TeamId = 'red'): TicTacToeState
   };
 }
 
-function createShuffledCards(): BoardCard[] {
+function createShuffledCards(customization?: StudioCustomization): BoardCard[] {
   const shuffledCategories = shuffleArray(MINI_GAME_CATEGORIES);
   return FIXED_EMOJI_COVERS.map((emojiCover, idx) => {
     const cat = shuffledCategories[idx];
+    const customLabel = customization?.cardSlots?.[emojiCover.cardNumber]?.emojiLabel?.trim();
     return {
       cardNumber: emojiCover.cardNumber,
       emojiId: emojiCover.emojiId,
-      emojiLabel: emojiCover.emojiLabel,
+      emojiLabel: customLabel || emojiCover.emojiLabel,
       category: cat.category,
       categoryTitle: cat.title,
       revealed: false,
@@ -407,7 +438,7 @@ function getDb(): ServerlessDB {
       activeTeam: 'red',
       lastScorePulse: null,
       selectedCardNumber: 1,
-      stage: 'board',
+      stage: 'home',
       boardDeckId: 1,
       cards: createShuffledCards(),
       activeMiniGame: null,
@@ -746,21 +777,26 @@ export default async function handler(req: any, res: any) {
         }
         break;
       }
+      case 'stage:showHome':
+        session.stage = 'home';
+        session.activeMiniGame = null;
+        db.timerStartedAt = null;
+        break;
+      case 'stage:revealBoard':
+        session.stage = 'board';
+        session.activeMiniGame = null;
+        db.timerStartedAt = null;
+        session.boardDeckId = (session.boardDeckId || 1) + 1;
+        break;
       case 'card:select': {
-        const revealedCard = session.cards.find((c) => c.revealed);
-        if (revealedCard) {
-          session.selectedCardNumber = revealedCard.cardNumber;
-          break;
-        }
         const cardNum = Number(payload.cardNumber);
         if (cardNum >= 1 && cardNum <= 8) session.selectedCardNumber = cardNum;
         break;
       }
       case 'card:reveal': {
-        const revealedCard = session.cards.find((c) => c.revealed);
-        if (revealedCard) {
-          session.selectedCardNumber = revealedCard.cardNumber;
-          break;
+        if (session.stage === 'home') {
+          session.stage = 'board';
+          session.boardDeckId = (session.boardDeckId || 1) + 1;
         }
         const cardNum = Number(payload.cardNumber) || session.selectedCardNumber;
         const card = session.cards.find((c) => c.cardNumber === cardNum);
@@ -771,23 +807,30 @@ export default async function handler(req: any, res: any) {
         break;
       }
       case 'card:openMiniGame': {
-        const revealedCard = session.cards.find((c) => c.revealed);
-        const cardNum = revealedCard
-          ? revealedCard.cardNumber
-          : Number(payload.cardNumber) || session.selectedCardNumber;
-        const card = session.cards.find((c) => c.cardNumber === cardNum);
-        if (!card) break;
-        session.selectedCardNumber = card.cardNumber;
-        card.revealed = true;
+        const requestedCategory = payload.category as MiniGameCategory | undefined;
+        const cardNum = Number(payload.cardNumber) || session.selectedCardNumber;
+        const card =
+          (payload.cardNumber ? session.cards.find((c) => c.cardNumber === Number(payload.cardNumber)) : undefined) ||
+          (requestedCategory ? session.cards.find((c) => c.category === requestedCategory) : undefined) ||
+          session.cards.find((c) => c.cardNumber === cardNum);
+        const targetCategory = requestedCategory || card?.category;
+        if (!targetCategory) break;
+        const targetCardNumber = card?.cardNumber ?? cardNum;
+        const targetTitle =
+          card?.categoryTitle ||
+          MINI_GAME_CATEGORIES.find((m) => m.category === targetCategory)?.title ||
+          targetCategory;
+        session.selectedCardNumber = targetCardNumber;
+        if (card) card.revealed = true;
         session.stage = 'minigame';
         db.timerStartedAt = null;
         db.timerInitialSeconds = 30;
 
-        if (card.category === 'tictactoe') {
+        if (targetCategory === 'tictactoe') {
           session.activeMiniGame = {
-            cardNumber: card.cardNumber,
-            category: card.category,
-            categoryTitle: card.categoryTitle,
+            cardNumber: targetCardNumber,
+            category: targetCategory,
+            categoryTitle: targetTitle,
             snapshot: null,
             timerSeconds: 30,
             timerRunning: false,
@@ -795,9 +838,9 @@ export default async function handler(req: any, res: any) {
             imageUnblurred: false,
             audioPlaying: false,
             audioCommandTimestamp: Date.now(),
-            scored: card.scored,
-            scoreResult: card.scoreResult,
-            awardedTeam: card.awardedTeam || null,
+            scored: card?.scored ?? false,
+            scoreResult: card?.scoreResult ?? 'pending',
+            awardedTeam: card?.awardedTeam || null,
             ticTacToe: createFreshTicTacToeState(session.activeTeam),
           };
         } else {
@@ -808,7 +851,7 @@ export default async function handler(req: any, res: any) {
             session.autoSelectionEnabled = true;
           }
 
-          const categoryItems = db.contentItems.filter((item) => item.category === card.category);
+          const categoryItems = db.contentItems.filter((item) => item.category === targetCategory);
           let chosen: ContentItem | undefined;
 
           if (payload.itemId && payload.itemId !== 'auto') {
@@ -816,7 +859,7 @@ export default async function handler(req: any, res: any) {
           }
 
           if (!chosen) {
-            chosen = getAutomaticContentItem(card.category, categoryItems, session.usedItemIds);
+            chosen = getAutomaticContentItem(targetCategory, categoryItems, session.usedItemIds);
           }
 
           if (chosen && chosen.id && !session.usedItemIds.includes(chosen.id)) {
@@ -825,9 +868,9 @@ export default async function handler(req: any, res: any) {
 
           if (chosen) {
             session.activeMiniGame = {
-              cardNumber: card.cardNumber,
-              category: card.category,
-              categoryTitle: card.categoryTitle,
+              cardNumber: targetCardNumber,
+              category: targetCategory,
+              categoryTitle: targetTitle,
               snapshot: {
                 itemId: chosen.id,
                 category: chosen.category,
@@ -844,9 +887,9 @@ export default async function handler(req: any, res: any) {
               imageUnblurred: false,
               audioPlaying: false,
               audioCommandTimestamp: Date.now(),
-              scored: card.scored,
-              scoreResult: card.scoreResult,
-              awardedTeam: card.awardedTeam || null,
+              scored: card?.scored ?? false,
+              scoreResult: card?.scoreResult ?? 'pending',
+              awardedTeam: card?.awardedTeam || null,
             };
           }
         }
@@ -863,7 +906,7 @@ export default async function handler(req: any, res: any) {
         session.activeMiniGame = null;
         db.timerStartedAt = null;
         session.boardDeckId = (session.boardDeckId || 1) + 1;
-        session.cards = createShuffledCards();
+        session.cards = createShuffledCards(session.customization);
         break;
       case 'board:newGame':
         session.redScore = 0;
@@ -871,12 +914,75 @@ export default async function handler(req: any, res: any) {
         session.activeTeam = 'red';
         session.lastScorePulse = null;
         session.selectedCardNumber = 1;
-        session.stage = 'board';
+        session.stage = 'home';
         session.activeMiniGame = null;
         db.timerStartedAt = null;
         session.boardDeckId = (session.boardDeckId || 1) + 1;
-        session.cards = createShuffledCards();
+        session.cards = createShuffledCards(session.customization);
         session.usedItemIds = [];
+        break;
+      case 'customization:update': {
+        const incoming = (payload.customization || {}) as StudioCustomization;
+        const prev = session.customization || {};
+        const mergedSlots: Record<number, CardSlotCustomization> = { ...(prev.cardSlots || {}) };
+        if (incoming.cardSlots) {
+          for (const [k, v] of Object.entries(incoming.cardSlots)) {
+            const num = Number(k);
+            if (num >= 1 && num <= 8) {
+              mergedSlots[num] = {
+                ...(mergedSlots[num] || {}),
+                ...(v || {}),
+              };
+            }
+          }
+        }
+        const mergedMiniGameIcons: Partial<Record<MiniGameCategory, string>> = {
+          ...(prev.miniGameIcons || {}),
+        };
+        if (incoming.miniGameIcons) {
+          for (const [k, v] of Object.entries(incoming.miniGameIcons)) {
+            if (typeof v === 'string') {
+              if (v.trim()) {
+                mergedMiniGameIcons[k as MiniGameCategory] = v.trim();
+              } else {
+                delete mergedMiniGameIcons[k as MiniGameCategory];
+              }
+            }
+          }
+        }
+        const mergedMiniGameIconScales: Partial<Record<MiniGameCategory, number>> = {
+          ...(prev.miniGameIconScales || {}),
+        };
+        if (incoming.miniGameIconScales) {
+          for (const [k, v] of Object.entries(incoming.miniGameIconScales)) {
+            if (v === null || v === undefined || Number(v) <= 0) {
+              delete mergedMiniGameIconScales[k as MiniGameCategory];
+            } else if (Number.isFinite(Number(v))) {
+              mergedMiniGameIconScales[k as MiniGameCategory] =
+                Math.round(Math.min(1.8, Math.max(0.5, Number(v))) * 100) / 100;
+            }
+          }
+        }
+        session.customization = {
+          ...prev,
+          ...incoming,
+          cardSlots: mergedSlots,
+          miniGameIcons: mergedMiniGameIcons,
+          miniGameIconScales: mergedMiniGameIconScales,
+        };
+        for (const c of session.cards) {
+          const defCover = FIXED_EMOJI_COVERS.find((f) => f.cardNumber === c.cardNumber);
+          const customLabel = session.customization?.cardSlots?.[c.cardNumber]?.emojiLabel?.trim();
+          c.emojiLabel = customLabel || defCover?.emojiLabel || c.emojiLabel;
+        }
+        break;
+      }
+      case 'customization:reset':
+        session.customization = undefined;
+        for (const c of session.cards) {
+          const defCover = FIXED_EMOJI_COVERS.find((f) => f.cardNumber === c.cardNumber);
+          if (defCover) c.emojiLabel = defCover.emojiLabel;
+        }
         break;
       case 'minigame:useItem': {
         const mg = session.activeMiniGame;
@@ -1041,8 +1147,7 @@ export default async function handler(req: any, res: any) {
         break;
       }
       case 'minigame:backToBoard':
-        session.boardDeckId = (session.boardDeckId || 1) + 1;
-        session.cards = createShuffledCards();
+        for (const card of session.cards) card.revealed = false;
         session.stage = 'board';
         session.activeMiniGame = null;
         db.timerStartedAt = null;

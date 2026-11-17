@@ -1,17 +1,13 @@
 {
   "session": {
     "sessionId": "fanzone-live-session",
-    "redScore": 1,
+    "redScore": 0,
     "blueScore": 0,
-    "activeTeam": "blue",
-    "lastScorePulse": {
-      "team": "red",
-      "delta": 1,
-      "timestamp": 1794304906198
-    },
-    "selectedCardNumber": 8,
-    "stage": "board",
-    "boardDeckId": 1,
+    "activeTeam": "red",
+    "lastScorePulse": null,
+    "selectedCardNumber": 4,
+    "stage": "minigame",
+    "boardDeckId": 5,
     "cards": [
       {
         "cardNumber": 1,
@@ -28,8 +24,8 @@
         "cardNumber": 2,
         "emojiId": "crying_smili",
         "emojiLabel": "Joy Tears",
-        "category": "jersey",
-        "categoryTitle": "Guess the Jersey",
+        "category": "photo",
+        "categoryTitle": "Guess the Player Photo",
         "revealed": false,
         "scored": false,
         "scoreResult": "pending",
@@ -39,8 +35,8 @@
         "cardNumber": 3,
         "emojiId": "love",
         "emojiLabel": "Heart Eyes",
-        "category": "logo",
-        "categoryTitle": "Guess the Team Logo",
+        "category": "stadium",
+        "categoryTitle": "Guess the Stadium",
         "revealed": false,
         "scored": false,
         "scoreResult": "pending",
@@ -50,9 +46,9 @@
         "cardNumber": 4,
         "emojiId": "shock",
         "emojiLabel": "Shocked",
-        "category": "stadium",
-        "categoryTitle": "Guess the Stadium",
-        "revealed": false,
+        "category": "tictactoe",
+        "categoryTitle": "Football Tic-Tac-Toe",
+        "revealed": true,
         "scored": false,
         "scoreResult": "pending",
         "awardedTeam": null
@@ -61,8 +57,8 @@
         "cardNumber": 5,
         "emojiId": "silly",
         "emojiLabel": "Wink Tongue",
-        "category": "photo",
-        "categoryTitle": "Guess the Player Photo",
+        "category": "jersey",
+        "categoryTitle": "Guess the Jersey",
         "revealed": false,
         "scored": false,
         "scoreResult": "pending",
@@ -72,8 +68,8 @@
         "cardNumber": 6,
         "emojiId": "smali",
         "emojiLabel": "Big Smile",
-        "category": "audio",
-        "categoryTitle": "Audio",
+        "category": "logo",
+        "categoryTitle": "Guess the Team Logo",
         "revealed": false,
         "scored": false,
         "scoreResult": "pending",
@@ -83,8 +79,8 @@
         "cardNumber": 7,
         "emojiId": "angry",
         "emojiLabel": "Fierce Angry",
-        "category": "quiz",
-        "categoryTitle": "Quiz",
+        "category": "audio",
+        "categoryTitle": "Audio",
         "revealed": false,
         "scored": false,
         "scoreResult": "pending",
@@ -94,17 +90,221 @@
         "cardNumber": 8,
         "emojiId": "cool",
         "emojiLabel": "Cool Shades",
-        "category": "tictactoe",
-        "categoryTitle": "Football Tic-Tac-Toe",
+        "category": "quiz",
+        "categoryTitle": "Quiz",
         "revealed": false,
         "scored": false,
         "scoreResult": "pending",
         "awardedTeam": null
       }
     ],
-    "activeMiniGame": null,
-    "updatedAt": 1794308057281,
-    "revision": 6
+    "activeMiniGame": {
+      "cardNumber": 4,
+      "category": "tictactoe",
+      "categoryTitle": "Football Tic-Tac-Toe",
+      "snapshot": null,
+      "timerSeconds": 30,
+      "timerRunning": false,
+      "answerRevealed": false,
+      "imageUnblurred": false,
+      "audioPlaying": false,
+      "audioCommandTimestamp": 1794741639064,
+      "scored": false,
+      "scoreResult": "pending",
+      "awardedTeam": null,
+      "ticTacToe": {
+        "clubs": [
+          {
+            "id": "man_united",
+            "name": "Manchester United",
+            "shortName": "MUN",
+            "bzzoiroTeamId": 17,
+            "logoUrl": "https://sports.bzzoiro.com/img/team/17/?bg=transparent"
+          },
+          {
+            "id": "psg",
+            "name": "Paris Saint-Germain",
+            "shortName": "PSG",
+            "bzzoiroTeamId": 114,
+            "logoUrl": "https://sports.bzzoiro.com/img/team/114/?bg=transparent"
+          },
+          {
+            "id": "bayern",
+            "name": "Bayern Munich",
+            "shortName": "BAY",
+            "bzzoiroTeamId": 79,
+            "logoUrl": "https://sports.bzzoiro.com/img/team/79/?bg=transparent"
+          }
+        ],
+        "nations": [
+          {
+            "id": "real_madrid",
+            "name": "Real Madrid",
+            "code": "RMA",
+            "bzzoiroTeamId": 57,
+            "logoUrl": "https://sports.bzzoiro.com/img/team/57/?bg=transparent"
+          },
+          {
+            "id": "juventus",
+            "name": "Juventus FC",
+            "code": "JUV",
+            "bzzoiroTeamId": 73,
+            "logoUrl": "https://sports.bzzoiro.com/img/team/73/?bg=transparent"
+          },
+          {
+            "id": "ac_milan",
+            "name": "AC Milan",
+            "code": "MIL",
+            "bzzoiroTeamId": 63,
+            "logoUrl": "https://sports.bzzoiro.com/img/team/63/?bg=transparent"
+          }
+        ],
+        "cells": [
+          {
+            "index": 0,
+            "row": 0,
+            "col": 0,
+            "owner": null,
+            "playerName": null
+          },
+          {
+            "index": 1,
+            "row": 0,
+            "col": 1,
+            "owner": null,
+            "playerName": null
+          },
+          {
+            "index": 2,
+            "row": 0,
+            "col": 2,
+            "owner": null,
+            "playerName": null
+          },
+          {
+            "index": 3,
+            "row": 1,
+            "col": 0,
+            "owner": null,
+            "playerName": null
+          },
+          {
+            "index": 4,
+            "row": 1,
+            "col": 1,
+            "owner": null,
+            "playerName": null
+          },
+          {
+            "index": 5,
+            "row": 1,
+            "col": 2,
+            "owner": null,
+            "playerName": null
+          },
+          {
+            "index": 6,
+            "row": 2,
+            "col": 0,
+            "owner": null,
+            "playerName": null
+          },
+          {
+            "index": 7,
+            "row": 2,
+            "col": 1,
+            "owner": null,
+            "playerName": null
+          },
+          {
+            "index": 8,
+            "row": 2,
+            "col": 2,
+            "owner": null,
+            "playerName": null
+          }
+        ],
+        "turn": "red",
+        "selectedCellIndex": 0,
+        "winner": null,
+        "winningLine": null,
+        "scoreAwarded": false,
+        "rejectedFeedback": null,
+        "hintsByCell": {
+          "0": [
+            "Cristiano Ronaldo",
+            "David Beckham",
+            "Casemiro",
+            "Raphaël Varane",
+            "Ángel Di María",
+            "Ruud van Nistelrooy"
+          ],
+          "1": [
+            "Kylian Mbappé",
+            "Sergio Ramos",
+            "Ángel Di María",
+            "Keylor Navas",
+            "Achraf Hakimi",
+            "Claude Makélélé"
+          ],
+          "2": [
+            "Toni Kroos",
+            "Xabi Alonso",
+            "Arjen Robben",
+            "David Alaba",
+            "James Rodríguez",
+            "Zé Roberto"
+          ],
+          "3": [
+            "Cristiano Ronaldo",
+            "Paul Pogba",
+            "Zlatan Ibrahimović",
+            "Carlos Tevez",
+            "Patrice Evra",
+            "Edwin van der Sar"
+          ],
+          "4": [
+            "Zlatan Ibrahimović",
+            "Gianluigi Buffon",
+            "Ángel Di María",
+            "Adrien Rabiot",
+            "Kingsley Coman",
+            "Dani Alves"
+          ],
+          "5": [
+            "Arturo Vidal",
+            "Kingsley Coman",
+            "Matthijs de Ligt",
+            "Mario Mandžukić",
+            "Douglas Costa",
+            "João Cancelo"
+          ],
+          "6": [
+            "Zlatan Ibrahimović",
+            "David Beckham",
+            "Jaap Stam",
+            "Matteo Darmian",
+            "Diogo Dalot"
+          ],
+          "7": [
+            "Zlatan Ibrahimović",
+            "Thiago Silva",
+            "Ronaldinho",
+            "George Weah",
+            "David Beckham",
+            "Gianluigi Donnarumma"
+          ],
+          "8": [
+            "Mark van Bommel",
+            "Mario Mandžukić",
+            "Pepe Reina",
+            "Jean-Pierre Papin"
+          ]
+        }
+      }
+    },
+    "updatedAt": 1794741639064,
+    "revision": 26
   },
   "contentItems": [
     {

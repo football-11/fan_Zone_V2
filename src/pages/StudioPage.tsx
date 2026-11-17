@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { GameSyncProvider, useGameSync } from '../context/GameSyncContext';
 import { StudioStageView } from '../components/StudioStageView';
 import { StudioErrorBoundary } from '../components/StudioErrorBoundary';
+import { OceanicBackdrop } from '../components/OceanicBackdrop';
 import { ArrowLeft, Maximize, Minimize, RefreshCw, Radio, Tv } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -63,38 +64,41 @@ const StudioScreenContent: React.FC = () => {
 
   if (!state) {
     return (
-      <div className="w-screen h-screen bg-[#020611] text-white flex flex-col items-center justify-center p-6 select-none font-['Outfit']">
-        <div className="relative mb-6">
-          <div className="w-20 h-20 rounded-2xl bg-[#081326] border-2 border-amber-500/60 flex items-center justify-center shadow-[0_0_40px_rgba(245,158,11,0.25)]">
-            <Radio className="w-10 h-10 text-amber-400 animate-pulse" />
+      <div className="relative w-screen h-screen bg-[#021E26] text-white flex flex-col items-center justify-center p-6 select-none font-['Chakra_Petch'] overflow-hidden">
+        <OceanicBackdrop />
+        <div className="relative z-10 glass-panel glass-noise rounded-2xl p-8 max-w-lg w-full flex flex-col items-center text-center">
+          <div className="relative mb-5">
+            <div className="w-18 h-18 rounded-2xl glass-panel-deep border border-[#4DB8FF]/60 flex items-center justify-center shadow-[0_0_36px_rgba(77,184,255,0.28)]">
+              <Radio className="w-9 h-9 text-[#4DB8FF] animate-pulse" />
+            </div>
+            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#4DB8FF] animate-ping" />
           </div>
-          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 animate-ping" />
-        </div>
 
-        <h1 className="text-2xl lg:text-3xl font-black tracking-wide text-amber-400 mb-2">
-          FANZONE LIVE · CONNECTING 16:9 STUDIO FEED...
-        </h1>
-        <p className="text-sm text-slate-400 max-w-md text-center mb-6">
-          {connectingElapsed > 2
-            ? 'Waiting for broadcast host session. You can force sync or switch to the host console below.'
-            : 'Synchronizing real-time 16:9 broadcast stage with host control console.'}
-        </p>
+          <h1 className="text-xl lg:text-2xl font-extrabold font-['Unbounded'] tracking-wide text-white mb-2">
+            <span className="text-[#4DB8FF]">FANZONE</span> LIVE · CONNECTING...
+          </h1>
+          <p className="text-sm text-slate-300 max-w-md text-center mb-6">
+            {connectingElapsed > 2
+              ? 'Waiting for broadcast host session. You can force sync or switch to the host console below.'
+              : 'Synchronizing real-time 16:9 broadcast stage with host control console.'}
+          </p>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleRefresh}
-            className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs tracking-wider flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 transition-all"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            <span>{refreshing ? 'SYNCING FEED...' : 'RETRY FEED'}</span>
-          </button>
-          <Link
-            to="/host"
-            className="px-5 py-2.5 rounded-xl bg-[#081326] border border-slate-700 hover:border-slate-500 text-slate-300 font-bold text-xs tracking-wider flex items-center gap-2 transition-all"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>GO TO HOST CONSOLE</span>
-          </Link>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={handleRefresh}
+              className="px-5 py-2.5 rounded-xl bg-[#4DB8FF] hover:bg-[#7DD3FC] text-slate-950 font-extrabold text-xs tracking-wider flex items-center gap-2 cursor-pointer shadow-[0_0_24px_rgba(77,184,255,0.3)] active:scale-95 transition-all"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>{refreshing ? 'SYNCING FEED...' : 'RETRY FEED'}</span>
+            </button>
+            <Link
+              to="/host"
+              className="px-5 py-2.5 rounded-xl glass-panel-deep hover:border-[#4DB8FF]/60 text-slate-200 font-bold text-xs tracking-wider flex items-center gap-2 transition-all"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>GO TO HOST CONSOLE</span>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -105,72 +109,72 @@ const StudioScreenContent: React.FC = () => {
   return (
     <div
       onMouseMove={handleMouseMove}
-      className={`relative w-screen h-screen bg-[#020611] flex items-center justify-center p-0 sm:p-2 md:p-4 lg:p-6 overflow-hidden select-none font-['Outfit'] ${
+      className={`relative w-screen h-screen bg-[#040E18] flex items-center justify-center p-0 sm:p-2 md:p-4 lg:p-6 overflow-hidden select-none font-['Chakra_Petch'] ${
         showToolbar ? 'cursor-default' : 'cursor-none'
       }`}
     >
       {/* Dynamic Ambient Stadium Floodlight Backdrop (Reacts to Active Team) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {/* Red Team Stadium Glow (Left Aura) */}
+        {/* Red Team Coral Glow (Left Aura) */}
         <div
           className={`absolute -top-[20%] -left-[10%] w-[55vw] h-[55vw] rounded-full blur-[140px] transition-all duration-700 pointer-events-none ${
-            activeTeam === 'red' ? 'opacity-40 scale-105' : 'opacity-15 scale-95'
+            activeTeam === 'red' ? 'opacity-35 scale-105' : 'opacity-12 scale-95'
           }`}
           style={{
-            background: 'radial-gradient(circle, rgba(239,68,68,0.5) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(244,63,94,0.48) 0%, transparent 70%)',
           }}
         />
 
-        {/* Blue Team Stadium Glow (Right Aura) */}
+        {/* Blue Team Cyan Glow (Right Aura) */}
         <div
           className={`absolute -top-[20%] -right-[10%] w-[55vw] h-[55vw] rounded-full blur-[140px] transition-all duration-700 pointer-events-none ${
-            activeTeam === 'blue' ? 'opacity-40 scale-105' : 'opacity-15 scale-95'
+            activeTeam === 'blue' ? 'opacity-40 scale-105' : 'opacity-18 scale-95'
           }`}
           style={{
-            background: 'radial-gradient(circle, rgba(56,189,248,0.5) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(77,184,255,0.45) 0%, transparent 70%)',
           }}
         />
 
-        {/* Center Amber Broadcast Halo */}
+        {/* Center Teal Broadcast Halo */}
         <div
-          className="absolute -bottom-[25%] left-[25%] w-[50vw] h-[45vw] rounded-full blur-[160px] opacity-20 pointer-events-none"
+          className="absolute -bottom-[25%] left-[25%] w-[50vw] h-[45vw] rounded-full blur-[160px] opacity-25 pointer-events-none"
           style={{
-            background: 'radial-gradient(circle, rgba(245,158,11,0.35) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(16,94,132,0.45) 0%, transparent 70%)',
           }}
         />
       </div>
 
       {/* Top Floating Broadcast Toolbar (Hover-Revealed) */}
       <div
-        className={`fixed top-0 left-0 right-0 z-50 px-6 py-2.5 bg-gradient-to-b from-[#020611]/95 via-[#081326]/85 to-transparent backdrop-blur-sm flex items-center justify-between transition-opacity duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 px-6 py-2.5 bg-gradient-to-b from-[#040E18]/95 via-[#071A2B]/85 to-transparent backdrop-blur-sm flex items-center justify-between transition-opacity duration-300 ${
           showToolbar ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
         <div className="flex items-center gap-3">
           <Link
             to="/host"
-            className="px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-700 hover:border-amber-400 text-slate-200 hover:text-white font-['Outfit'] font-bold text-xs flex items-center gap-1.5 transition-colors shadow-md"
+            className="px-3 py-1.5 rounded-lg bg-[#081A2C]/90 border border-[#38BDF8]/30 hover:border-[#4DB8FF] text-slate-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-md"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Host Console</span>
           </Link>
           <Link
             to="/content"
-            className="px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-700 hover:border-sky-400 text-slate-300 hover:text-white font-['Outfit'] font-bold text-xs transition-colors shadow-md"
+            className="px-3 py-1.5 rounded-lg bg-[#081A2C]/90 border border-[#38BDF8]/30 hover:border-[#4DB8FF] text-slate-300 hover:text-white font-bold text-xs transition-colors shadow-md"
           >
             Content Bank
           </Link>
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-[11px] font-bold text-amber-300 font-['JetBrains_Mono']">
-            <Tv className="w-3 h-3 text-amber-400" />
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#4DB8FF]/10 border border-[#4DB8FF]/30 text-[11px] font-bold text-[#7DD3FC] font-['JetBrains_Mono']">
+            <Tv className="w-3 h-3 text-[#4DB8FF]" />
             <span>16:9 BROADCAST STAGE</span>
           </span>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700 text-xs font-['JetBrains_Mono'] shadow-md">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#081A2C]/90 border border-[#38BDF8]/30 text-xs font-['JetBrains_Mono'] shadow-md">
             <span
               className={`w-2 h-2 rounded-full ${
-                connected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                connected ? 'bg-emerald-400 animate-pulse' : 'bg-[#4DB8FF]'
               }`}
             />
             <span className="text-slate-300">
@@ -181,15 +185,15 @@ const StudioScreenContent: React.FC = () => {
           <button
             onClick={handleRefresh}
             title="Force sync studio feed"
-            className="p-1.5 rounded-lg bg-slate-900/90 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white cursor-pointer shadow-md"
+            className="p-1.5 rounded-lg bg-[#081A2C]/90 border border-[#38BDF8]/30 hover:border-[#4DB8FF] text-slate-300 hover:text-white cursor-pointer shadow-md"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-amber-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-[#4DB8FF]' : ''}`} />
           </button>
 
           <button
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-            className="p-1.5 rounded-lg bg-slate-900/90 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white cursor-pointer shadow-md"
+            className="p-1.5 rounded-lg bg-[#081A2C]/90 border border-[#38BDF8]/30 hover:border-[#4DB8FF] text-slate-300 hover:text-white cursor-pointer shadow-md"
           >
             {isFullscreen ? (
               <Minimize className="w-3.5 h-3.5" />
@@ -202,7 +206,7 @@ const StudioScreenContent: React.FC = () => {
 
       {/* STRICT 16:9 ASPECT RATIO BROADCAST STAGE CONTAINER */}
       <div
-        className="relative w-full max-w-[1920px] max-h-full aspect-video flex flex-col justify-between overflow-hidden bg-[#030914] shadow-[0_0_100px_rgba(0,0,0,0.85)] border border-slate-800/90 rounded-none sm:rounded-2xl"
+        className="relative w-full max-w-[1920px] max-h-full aspect-video flex flex-col justify-between overflow-hidden bg-[#061523] shadow-[0_0_100px_rgba(0,0,0,0.85)] border border-[#38BDF8]/25 rounded-none sm:rounded-2xl"
         style={{
           aspectRatio: '16 / 9',
         }}

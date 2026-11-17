@@ -12,17 +12,18 @@ import {
   Square,
   Sparkles,
   RefreshCw,
+  Home,
+  Tv,
 } from 'lucide-react';
 import { GameSyncProvider, useGameSync } from '../context/GameSyncContext';
 import { OwnerAuthGate } from '../components/OwnerAuthGate';
 import { StudioStageView } from '../components/StudioStageView';
+import { OceanicBackdrop } from '../components/OceanicBackdrop';
 import {
   CategoryBadgeArtwork,
   ClubCrestArtwork,
-  EmojiBadgeArtwork,
-  NationFlagArtwork,
 } from '../components/BroadcastArtwork';
-import { ContentItem } from '../types/game';
+import { ContentItem, resolveCustomMiniGameIcon } from '../types/game';
 import { resolveBzzoiroPlayerImageUrl } from '../data/bzzoiroSports';
 
 const HostConsoleBody: React.FC = () => {
@@ -122,8 +123,11 @@ const HostConsoleBody: React.FC = () => {
 
   if (!state) {
     return (
-      <div className="min-h-screen bg-[#030914] text-white flex items-center justify-center font-['Outfit']">
-        <div className="text-xl font-bold text-amber-400">Loading Host Console...</div>
+      <div className="relative min-h-screen bg-[#040F1A] text-white flex items-center justify-center font-['Unbounded'] overflow-hidden">
+        <OceanicBackdrop fixed />
+        <div className="relative z-10 glass-panel glass-noise rounded-2xl px-8 py-6 text-lg font-bold text-[#4DB8FF]">
+          Loading Host Console...
+        </div>
       </div>
     );
   }
@@ -136,20 +140,22 @@ const HostConsoleBody: React.FC = () => {
   const activeCellHints = (ttt?.hintsByCell && ttt.hintsByCell[activeCellIndex]) || [];
 
   return (
-    <div className="min-h-screen bg-[#030914] text-slate-100 flex flex-col font-['Plus_Jakarta_Sans']">
+    <div className="relative min-h-screen bg-[#040F1A] text-slate-100 flex flex-col font-['Plus_Jakarta_Sans']">
+      <OceanicBackdrop fixed />
+
       {/* Top Bar Contract: 3 Zones Separated by gap-8 */}
-      <header className="flex items-center justify-between gap-8 px-6 py-3 bg-[#081326] border-b border-slate-800">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-8 px-6 py-3 glass-header">
         <Link
           to="/host"
-          className="text-lg font-extrabold font-['Outfit'] tracking-tight text-white whitespace-nowrap shrink-0"
+          className="text-lg font-extrabold font-['Unbounded'] tracking-tight text-white whitespace-nowrap shrink-0"
         >
-          FanZone Host Console
+          <span className="text-[#4DB8FF]">FanZone</span> Host Console
         </Link>
 
-        <nav className="flex items-center gap-6 text-sm font-medium text-slate-300">
+        <nav className="flex items-center gap-6 text-sm font-semibold text-slate-300 font-['Chakra_Petch']">
           <Link
             to="/host"
-            className="text-amber-400 hover:text-amber-300 transition-colors whitespace-nowrap shrink-0"
+            className="text-[#4DB8FF] hover:text-[#7DD3FC] transition-colors whitespace-nowrap shrink-0"
           >
             Host Console
           </Link>
@@ -160,10 +166,16 @@ const HostConsoleBody: React.FC = () => {
             Content Manager
           </Link>
           <Link
+            to="/customize"
+            className="hover:text-white transition-colors whitespace-nowrap shrink-0"
+          >
+            Studio Customizer
+          </Link>
+          <Link
             to="/studio"
             target="_blank"
             rel="noreferrer"
-            className="hover:text-sky-400 transition-colors whitespace-nowrap shrink-0"
+            className="hover:text-[#4DB8FF] transition-colors whitespace-nowrap shrink-0"
           >
             Studio Display
           </Link>
@@ -173,7 +185,7 @@ const HostConsoleBody: React.FC = () => {
           <button
             type="button"
             onClick={logoutOwner}
-            className="min-h-[44px] px-4 py-2 text-xs font-semibold text-slate-200 bg-slate-900 border border-slate-700 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="min-h-[44px] px-4 py-2 text-xs font-bold text-slate-200 glass-panel-deep rounded-xl hover:border-[#4DB8FF]/60 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             Sign Out
           </button>
@@ -181,171 +193,221 @@ const HostConsoleBody: React.FC = () => {
       </header>
 
       {/* Main iPad Two-Column Responsive Workspace */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <main className="relative z-10 flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN (7 cols): Live 16:9 Studio Preview + Interactive 2x4 Card Selector */}
         <div className="lg:col-span-7 flex flex-col gap-5">
           {/* Live 16:9 Synchronized Studio Monitor */}
-          <section className="bg-[#081326] border border-slate-800 rounded-2xl p-4">
+          <section className="glass-panel glass-noise rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h2 className="text-base font-bold font-['Outfit'] text-white">
+                <h2 className="text-base font-bold font-['Unbounded'] text-white">
                   Live 16:9 Broadcast Studio Monitor
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-300 mt-0.5">
                   Real-time synchronized mirror of /studio · Stage:{' '}
-                  {state.stage === 'board' ? 'Main 2×4 Board' : mg?.categoryTitle}
+                  {state.stage === 'home'
+                    ? 'Home Screen (Awaiting Reveal)'
+                    : state.stage === 'board'
+                    ? 'Main 2×4 Board'
+                    : mg?.categoryTitle}
                 </p>
               </div>
-              <div className="text-xs font-['JetBrains_Mono'] text-amber-400">
+              <div className="text-xs font-['Chakra_Petch'] font-bold tracking-wider px-2.5 py-1 rounded-lg glass-panel-deep text-[#7DD3FC]">
                 RED {state.redScore} · BLUE {state.blueScore}
               </div>
             </div>
 
-            <div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl">
+            <div className="w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-[#5EC8FF]/25">
               <StudioStageView state={state} isPreview={true} />
             </div>
           </section>
 
-          {/* Interactive 2x4 Main Board Card Selector */}
-          <section className="bg-[#081326] border border-slate-800 rounded-2xl p-4">
-            {(() => {
-              const revealedCard = state.cards.find((c) => c.revealed);
-              return (
-                <>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h2 className="text-base font-bold font-['Outfit'] text-white">
-                        2×4 Main Board Card Selector (1 Pick Per Turn)
-                      </h2>
-                      <p className="text-xs text-slate-400">
-                        {revealedCard
-                          ? `Card #${revealedCard.cardNumber} (${revealedCard.emojiLabel}) is picked — other 7 emojis are locked until Back to Board, Reset Covers, or Shuffle Sports.`
-                          : 'Tap any card (#1–#8) to select it, then Reveal Card or Open Mini Game'}
-                      </p>
+          {/* Interactive 2x4 Game Icon Cards Selector */}
+          <section className="glass-panel glass-noise rounded-2xl p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <div>
+                <h2 className="text-base font-bold font-['Unbounded'] text-white">
+                  2×4 Game Icon Cards
+                </h2>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Tap any card (#1–#8) to select it, then press Open Mini Game below
+                </p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <Link
+                  to="/customize"
+                  className="min-h-[36px] px-3 py-1.5 rounded-xl glass-panel-deep hover:border-[#4DB8FF]/60 text-xs font-bold text-[#7DD3FC] flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <span>Customize Icons & Cards</span>
+                </Link>
+                <span className="text-xs font-['Chakra_Petch'] font-bold text-[#4DB8FF] shrink-0">
+                  Selected: Card #{state.selectedCardNumber}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {state.cards.map((card) => {
+                const isSelected = state.selectedCardNumber === card.cardNumber;
+                const isLiveMiniGame =
+                  state.stage === 'minigame' && mg?.cardNumber === card.cardNumber;
+                return (
+                  <button
+                    key={card.cardNumber}
+                    type="button"
+                    onClick={() =>
+                      sendHostAction('card:select', { cardNumber: card.cardNumber })
+                    }
+                    className={`min-h-[124px] p-3 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer backdrop-blur-md ${
+                      isLiveMiniGame
+                        ? 'bg-[#0E3958]/70 border-2 border-[#34D399] shadow-[0_0_24px_rgba(52,211,153,0.3)]'
+                        : isSelected
+                        ? 'bg-[#0C3554]/65 border-2 border-[#4DB8FF] shadow-[0_0_22px_rgba(77,184,255,0.28)]'
+                        : 'glass-panel-deep hover:border-[#4DB8FF]/60 hover:bg-[#0A2B45]/60'
+                    }`}
+                  >
+                    <div className="w-full flex items-center justify-between">
+                      <span className="font-['Chakra_Petch'] font-bold text-sm text-[#4DB8FF] tabular-nums">
+                        #{card.cardNumber}
+                      </span>
+                      <span
+                        className={`text-[11px] font-semibold font-['Chakra_Petch'] ${
+                          isLiveMiniGame
+                            ? 'text-[#34D399] font-bold'
+                            : isSelected
+                            ? 'text-[#7DD3FC] font-bold'
+                            : card.scored
+                            ? card.scoreResult === 'correct'
+                              ? card.awardedTeam === 'red'
+                                ? 'text-[#FB6F84] font-bold'
+                                : 'text-[#4DB8FF] font-bold'
+                              : 'text-slate-300 font-bold'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        {isLiveMiniGame
+                          ? 'Live Now'
+                          : isSelected
+                          ? 'Selected'
+                          : card.scored
+                          ? card.scoreResult === 'correct'
+                            ? `+1 ${card.awardedTeam?.toUpperCase()}`
+                            : 'Played'
+                          : 'Select'}
+                      </span>
                     </div>
-                    <span className="text-xs font-['JetBrains_Mono'] font-bold text-amber-400 shrink-0">
-                      {revealedCard
-                        ? `Locked: Card #${revealedCard.cardNumber}`
-                        : `Selected: Card #${state.selectedCardNumber}`}
-                    </span>
-                  </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {state.cards.map((card) => {
-                      const isSelected = state.selectedCardNumber === card.cardNumber;
-                      const isLockedByPick = Boolean(
-                        revealedCard && revealedCard.cardNumber !== card.cardNumber
-                      );
-                      return (
-                        <button
-                          key={card.cardNumber}
-                          type="button"
-                          disabled={isLockedByPick}
-                          onClick={() =>
-                            sendHostAction('card:select', { cardNumber: card.cardNumber })
-                          }
-                          className={`min-h-[124px] p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
-                            isLockedByPick
-                              ? 'bg-[#030914]/50 border-slate-800/60 opacity-40 grayscale cursor-not-allowed'
-                              : isSelected
-                              ? 'bg-[#0E2240] border-2 border-[#F59E0B] shadow-[0_0_20px_rgba(245,158,11,0.28)] cursor-pointer'
-                              : 'bg-[#030914]/90 border-slate-800 hover:border-slate-700 cursor-pointer'
-                          }`}
-                        >
-                          <div className="w-full flex items-center justify-between">
-                            <span className="font-['JetBrains_Mono'] font-bold text-sm text-amber-400 tabular-nums">
-                              #{card.cardNumber}
-                            </span>
-                            <span
-                              className={`text-[11px] font-semibold ${
-                                card.revealed
-                                  ? 'text-emerald-400'
-                                  : isLockedByPick
-                                  ? 'text-rose-400'
-                                  : 'text-slate-400'
-                              }`}
-                            >
-                              {card.revealed
-                                ? 'Picked & Revealed'
-                                : isLockedByPick
-                                ? 'Locked'
-                                : 'Covered'}
-                            </span>
-                          </div>
+                    <div className="my-2 w-full flex items-center justify-center">
+                      <CategoryBadgeArtwork
+                        category={card.category}
+                        customIconUrl={resolveCustomMiniGameIcon(
+                          state.customization,
+                          card.category
+                        )}
+                        className="w-12 h-12 shrink-0"
+                      />
+                    </div>
 
-                          <div className="my-2 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
-                              <EmojiBadgeArtwork
-                                emojiId={card.emojiId}
-                                className="w-10 h-10 shrink-0"
-                              />
-                              <CategoryBadgeArtwork
-                                category={card.category}
-                                className="w-10 h-10 shrink-0"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <div className="text-xs font-bold font-['Outfit'] text-white truncate">
-                              {card.categoryTitle}
-                            </div>
-                            <div className="text-[11px] text-slate-400 flex items-center justify-between mt-0.5">
-                              <span>{card.emojiLabel}</span>
-                              <span>·</span>
-                              <span
-                                className={
-                                  card.scored
-                                    ? card.scoreResult === 'correct'
-                                      ? card.awardedTeam === 'red'
-                                        ? 'text-red-400 font-bold'
-                                        : 'text-sky-400 font-bold'
-                                      : 'text-amber-400 font-bold'
-                                    : 'text-slate-500'
-                                }
-                              >
-                                {card.scored
-                                  ? card.scoreResult === 'correct'
-                                    ? `+1 ${card.awardedTeam?.toUpperCase()}`
-                                    : '0 pts'
-                                  : isLockedByPick
-                                  ? 'Locked'
-                                  : 'Available'}
-                              </span>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              );
-            })()}
+                    <div className="w-full">
+                      <div className="text-xs font-bold font-['Unbounded'] text-white truncate text-center">
+                        {card.categoryTitle}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </section>
         </div>
 
         {/* RIGHT COLUMN (5 cols): Touch-Friendly Control Panels */}
         <div className="lg:col-span-5 flex flex-col gap-5">
+          {/* 0. STUDIO STAGE CONTROL: HOME SCREEN & REVEAL MAIN CARD GAME */}
+          <section className="glass-panel glass-noise rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Tv className="w-4 h-4 text-[#4DB8FF] shrink-0" />
+                <h2 className="text-sm font-bold font-['Unbounded'] text-white">
+                  Studio Stage Control
+                </h2>
+              </div>
+              <span
+                className={`text-xs font-['Chakra_Petch'] font-bold tracking-wider ${
+                  state.stage === 'home'
+                    ? 'text-[#7DD3FC]'
+                    : state.stage === 'board'
+                    ? 'text-[#34D399]'
+                    : 'text-[#4DB8FF]'
+                }`}
+              >
+                {state.stage === 'home'
+                  ? 'HOME SCREEN'
+                  : state.stage === 'board'
+                  ? 'MAIN BOARD LIVE'
+                  : 'MINI-GAME LIVE'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => sendHostAction('stage:revealBoard')}
+                className={`min-h-[48px] px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  state.stage === 'home'
+                    ? 'bg-[#34D399] hover:bg-emerald-400 text-slate-950 shadow-[0_0_24px_rgba(52,211,153,0.35)]'
+                    : state.stage === 'board'
+                    ? 'bg-emerald-950/60 border border-[#34D399]/60 text-[#34D399] hover:bg-emerald-900/60'
+                    : 'bg-[#4DB8FF] hover:bg-[#7DD3FC] text-slate-950 shadow-[0_0_20px_rgba(77,184,255,0.28)]'
+                }`}
+              >
+                <Play className="w-4 h-4 shrink-0" />
+                <span>
+                  {state.stage === 'board' ? 'Main Card Game Live' : 'Reveal Main Card Game'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => sendHostAction('stage:showHome')}
+                className={`min-h-[48px] px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                  state.stage === 'home'
+                    ? 'bg-[#4DB8FF]/20 border border-[#4DB8FF] text-[#7DD3FC]'
+                    : 'glass-panel-deep hover:border-[#4DB8FF]/60 text-slate-200'
+                }`}
+              >
+                <Home className="w-4 h-4 shrink-0" />
+                <span>{state.stage === 'home' ? 'Home Screen Active' : 'Show Home Screen'}</span>
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300">
+              {state.stage === 'home'
+                ? 'Studio display is showing the Home Screen. Press Reveal Main Card Game when ready to show the 2×4 board.'
+                : 'Switch back to the Home Screen anytime for pre-show or intermission.'}
+            </p>
+          </section>
+
           {/* 1. RED TEAM & BLUE TEAM SCORE & TURN CONTROLS */}
-          <section className="bg-[#081326] border border-slate-800 rounded-2xl p-4">
-            <h2 className="text-sm font-bold font-['Outfit'] text-white mb-3">
+          <section className="glass-panel glass-noise rounded-2xl p-4">
+            <h2 className="text-sm font-bold font-['Unbounded'] text-white mb-3">
               Team Turn & Manual Score Controls
             </h2>
 
             <div className="grid grid-cols-2 gap-3">
               {/* Red Team Control Box */}
               <div
-                className={`p-3 rounded-xl border ${
+                className={`p-3 rounded-xl border backdrop-blur-md transition-all ${
                   state.activeTeam === 'red'
-                    ? 'bg-red-950/35 border-[#EF4444]'
-                    : 'bg-[#030914] border-slate-800'
+                    ? 'bg-gradient-to-br from-[#2E1324]/70 to-[#561C34]/65 border-[#FB6F84] shadow-[inset_0_1px_0_rgba(255,205,220,0.4)]'
+                    : 'glass-panel-deep'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-['Outfit'] font-extrabold text-sm text-red-400">
-                    RED TEAM
+                  <span className="font-['Unbounded'] font-extrabold text-xs text-[#FB6F84] truncate pr-2">
+                    {state.customization?.redTeamName || 'RED TEAM'}
                   </span>
-                  <span className="font-['JetBrains_Mono'] font-extrabold text-2xl text-white tabular-nums">
+                  <span className="font-['Unbounded'] font-extrabold text-2xl text-white tabular-nums shrink-0">
                     {state.redScore}
                   </span>
                 </div>
@@ -355,8 +417,8 @@ const HostConsoleBody: React.FC = () => {
                   onClick={() => sendHostAction('team:setActive', { team: 'red' })}
                   className={`w-full min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold mb-2 transition-colors cursor-pointer whitespace-nowrap ${
                     state.activeTeam === 'red'
-                      ? 'bg-[#EF4444] text-white'
-                      : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700'
+                      ? 'bg-[#FB6F84] text-slate-950'
+                      : 'glass-panel-deep text-slate-200 hover:border-[#FB6F84]/60'
                   }`}
                 >
                   {state.activeTeam === 'red' ? 'Active Turn: Red Team' : 'Switch to Red Team'}
@@ -366,14 +428,14 @@ const HostConsoleBody: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => sendHostAction('score:adjust', { team: 'red', delta: -1 })}
-                    className="min-h-[44px] min-w-[44px] rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 font-['JetBrains_Mono'] font-bold text-sm text-slate-200 cursor-pointer"
+                    className="min-h-[44px] min-w-[44px] rounded-lg glass-panel-deep hover:border-[#4DB8FF]/50 font-['JetBrains_Mono'] font-bold text-sm text-slate-200 cursor-pointer"
                   >
                     -1
                   </button>
                   <button
                     type="button"
                     onClick={() => sendHostAction('score:adjust', { team: 'red', delta: 1 })}
-                    className="min-h-[44px] min-w-[44px] rounded-lg bg-red-600/30 hover:bg-red-600/50 border border-red-500/50 font-['JetBrains_Mono'] font-bold text-sm text-red-200 cursor-pointer"
+                    className="min-h-[44px] min-w-[44px] rounded-lg bg-[#FB6F84]/25 hover:bg-[#FB6F84]/40 border border-[#FB6F84]/55 font-['JetBrains_Mono'] font-bold text-sm text-rose-100 cursor-pointer"
                   >
                     +1
                   </button>
@@ -382,17 +444,17 @@ const HostConsoleBody: React.FC = () => {
 
               {/* Blue Team Control Box */}
               <div
-                className={`p-3 rounded-xl border ${
+                className={`p-3 rounded-xl border backdrop-blur-md transition-all ${
                   state.activeTeam === 'blue'
-                    ? 'bg-sky-950/35 border-[#38BDF8]'
-                    : 'bg-[#030914] border-slate-800'
+                    ? 'bg-gradient-to-br from-[#0D3350]/70 to-[#144E78]/65 border-[#4DB8FF] shadow-[inset_0_1px_0_rgba(186,230,253,0.4)]'
+                    : 'glass-panel-deep'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-['Outfit'] font-extrabold text-sm text-sky-400">
-                    BLUE TEAM
+                  <span className="font-['Unbounded'] font-extrabold text-xs text-[#4DB8FF] truncate pr-2">
+                    {state.customization?.blueTeamName || 'BLUE TEAM'}
                   </span>
-                  <span className="font-['JetBrains_Mono'] font-extrabold text-2xl text-white tabular-nums">
+                  <span className="font-['Unbounded'] font-extrabold text-2xl text-white tabular-nums shrink-0">
                     {state.blueScore}
                   </span>
                 </div>
@@ -402,8 +464,8 @@ const HostConsoleBody: React.FC = () => {
                   onClick={() => sendHostAction('team:setActive', { team: 'blue' })}
                   className={`w-full min-h-[44px] px-3 py-2 rounded-lg text-xs font-bold mb-2 transition-colors cursor-pointer whitespace-nowrap ${
                     state.activeTeam === 'blue'
-                      ? 'bg-[#38BDF8] text-slate-950'
-                      : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700'
+                      ? 'bg-[#4DB8FF] text-slate-950'
+                      : 'glass-panel-deep text-slate-200 hover:border-[#4DB8FF]/60'
                   }`}
                 >
                   {state.activeTeam === 'blue' ? 'Active Turn: Blue Team' : 'Switch to Blue Team'}
@@ -413,14 +475,14 @@ const HostConsoleBody: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => sendHostAction('score:adjust', { team: 'blue', delta: -1 })}
-                    className="min-h-[44px] min-w-[44px] rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 font-['JetBrains_Mono'] font-bold text-sm text-slate-200 cursor-pointer"
+                    className="min-h-[44px] min-w-[44px] rounded-lg glass-panel-deep hover:border-[#4DB8FF]/50 font-['JetBrains_Mono'] font-bold text-sm text-slate-200 cursor-pointer"
                   >
                     -1
                   </button>
                   <button
                     type="button"
                     onClick={() => sendHostAction('score:adjust', { team: 'blue', delta: 1 })}
-                    className="min-h-[44px] min-w-[44px] rounded-lg bg-sky-500/30 hover:bg-sky-500/50 border border-sky-400/50 font-['JetBrains_Mono'] font-bold text-sm text-sky-200 cursor-pointer"
+                    className="min-h-[44px] min-w-[44px] rounded-lg bg-[#4DB8FF]/25 hover:bg-[#4DB8FF]/40 border border-[#4DB8FF]/55 font-['JetBrains_Mono'] font-bold text-sm text-sky-100 cursor-pointer"
                   >
                     +1
                   </button>
@@ -429,17 +491,17 @@ const HostConsoleBody: React.FC = () => {
             </div>
           </section>
 
-          {/* 3. CARD REVEAL & BOARD DECK ACTIONS */}
-          <section className="bg-[#081326] border border-slate-800 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold font-['Outfit'] text-white">
-                Board Actions · Card #{state.selectedCardNumber} ({selectedCard?.categoryTitle})
+          {/* 3. BOARD DECK ACTIONS */}
+          <section className="glass-panel glass-noise rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-bold font-['Unbounded'] text-white truncate">
+                Board Actions · #{state.selectedCardNumber} ({selectedCard?.categoryTitle})
               </h2>
               {state.stage === 'minigame' && (
                 <button
                   type="button"
                   onClick={() => sendHostAction('minigame:backToBoard')}
-                  className="min-h-[44px] px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  className="min-h-[44px] px-3 py-2 rounded-xl bg-[#4DB8FF] hover:bg-[#7DD3FC] text-slate-950 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Back to Board
@@ -447,63 +509,35 @@ const HostConsoleBody: React.FC = () => {
               )}
             </div>
 
-            {/* Two Separate Primary Actions: Reveal Selected Card vs Open Mini Game */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                disabled={state.cards.some((c) => c.revealed)}
-                onClick={() =>
-                  sendHostAction('card:reveal', { cardNumber: state.selectedCardNumber })
-                }
-                className="min-h-[48px] px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
-              >
-                <Eye className="w-4 h-4 shrink-0" />
-                <span>
-                  {state.cards.some((c) => c.revealed)
-                    ? '1 Card Picked (Others Locked)'
-                    : 'Reveal Selected Card'}
-                </span>
-              </button>
+            <button
+              type="button"
+              onClick={() =>
+                sendHostAction('card:openMiniGame', {
+                  cardNumber: state.selectedCardNumber,
+                  itemId: selectedItemId || undefined,
+                })
+              }
+              className="w-full min-h-[48px] px-4 py-2.5 rounded-xl bg-[#4DB8FF] hover:bg-[#7DD3FC] text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap shadow-[0_0_24px_rgba(77,184,255,0.28)]"
+            >
+              <Sparkles className="w-4 h-4 shrink-0" />
+              <span>Open Mini Game (#{state.selectedCardNumber})</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() =>
-                  sendHostAction('card:openMiniGame', {
-                    cardNumber: state.selectedCardNumber,
-                    itemId: selectedItemId || undefined,
-                  })
-                }
-                className="min-h-[48px] px-4 py-2.5 rounded-xl bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
-              >
-                <Sparkles className="w-4 h-4 shrink-0" />
-                <span>Open Mini Game</span>
-              </button>
-            </div>
-
-            {/* Secondary Board Management Buttons: Reset Covers, Shuffle Sports, New Game */}
-            <div className="grid grid-cols-3 gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => sendHostAction('board:resetCovers')}
-                className="min-h-[44px] px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
-              >
-                <RotateCcw className="w-3.5 h-3.5 shrink-0" />
-                <span>Reset Covers</span>
-              </button>
-
+            {/* Secondary Board Management Buttons: Shuffle Games, New Game */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => sendHostAction('board:shuffleSports')}
-                className="min-h-[44px] px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                className="min-h-[44px] px-3 py-2 rounded-xl glass-panel-deep hover:border-[#4DB8FF]/60 text-xs font-semibold text-slate-200 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors"
               >
-                <Shuffle className="w-3.5 h-3.5 shrink-0" />
-                <span>Shuffle Sports</span>
+                <Shuffle className="w-3.5 h-3.5 shrink-0 text-[#4DB8FF]" />
+                <span>Shuffle Games</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setConfirmNewGame(true)}
-                className="min-h-[44px] px-3 py-2 rounded-xl bg-red-950/60 hover:bg-red-900/70 border border-red-500/40 text-xs font-semibold text-red-200 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                className="min-h-[44px] px-3 py-2 rounded-xl bg-[#FB6F84]/15 hover:bg-[#FB6F84]/25 border border-[#FB6F84]/45 text-xs font-semibold text-rose-200 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors"
               >
                 <RefreshCw className="w-3.5 h-3.5 shrink-0" />
                 <span>New Game</span>
@@ -512,9 +546,9 @@ const HostConsoleBody: React.FC = () => {
 
             {/* Confirmation Step for New Game */}
             {confirmNewGame && (
-              <div className="p-3 rounded-xl bg-red-950/90 border border-red-500/60 flex items-center justify-between gap-3">
-                <span className="text-xs font-semibold text-red-100">
-                  Reset Red & Blue scores to 0 and shuffle a brand-new board?
+              <div className="p-3 rounded-xl bg-[#3B1324]/85 backdrop-blur-md border border-[#FB6F84]/60 flex items-center justify-between gap-3">
+                <span className="text-xs font-semibold text-rose-100">
+                  Reset Red & Blue scores to 0, shuffle a brand-new board, and return to Home Screen?
                 </span>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
@@ -523,14 +557,14 @@ const HostConsoleBody: React.FC = () => {
                       sendHostAction('board:newGame');
                       setConfirmNewGame(false);
                     }}
-                    className="min-h-[44px] px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-400 text-white text-xs font-bold cursor-pointer whitespace-nowrap"
+                    className="min-h-[44px] px-3 py-1.5 rounded-lg bg-[#FB6F84] hover:bg-rose-400 text-slate-950 text-xs font-extrabold cursor-pointer whitespace-nowrap"
                   >
                     Confirm Reset
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmNewGame(false)}
-                    className="min-h-[44px] px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer whitespace-nowrap"
+                    className="min-h-[44px] px-3 py-1.5 rounded-lg glass-panel-deep text-slate-200 text-xs font-semibold cursor-pointer whitespace-nowrap"
                   >
                     Cancel
                   </button>
@@ -544,16 +578,16 @@ const HostConsoleBody: React.FC = () => {
             /* FOOTBALL TIC-TAC-TOE HOST OPERATOR CONTROLS */
             <section
               key={`host-ttt-${mg.cardNumber}`}
-              className="bg-[#081326] border border-slate-800 rounded-2xl p-4 space-y-4 animate-minigame-open"
+              className="glass-panel glass-noise rounded-2xl p-4 space-y-4 animate-minigame-open"
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold font-['Outfit'] text-white">
+                <h2 className="text-sm font-bold font-['Unbounded'] text-white">
                   Football Tic-Tac-Toe Controls
                 </h2>
                 <button
                   type="button"
                   onClick={() => sendHostAction('tictactoe:resetShuffle')}
-                  className="min-h-[44px] px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-amber-300 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  className="min-h-[44px] px-3 py-1.5 rounded-xl glass-panel-deep hover:border-[#4DB8FF]/60 text-xs font-semibold text-[#7DD3FC] flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
                   <Shuffle className="w-3.5 h-3.5" />
                   Reset & Shuffle Grid
@@ -567,8 +601,8 @@ const HostConsoleBody: React.FC = () => {
                   onClick={() => sendHostAction('tictactoe:setTurn', { team: 'red' })}
                   className={`min-h-[44px] px-3 py-2 rounded-xl font-bold text-xs transition-colors cursor-pointer whitespace-nowrap ${
                     mg.ticTacToe.turn === 'red'
-                      ? 'bg-[#EF4444] text-white'
-                      : 'bg-slate-900 border border-slate-700 text-slate-300'
+                      ? 'bg-[#FB6F84] text-slate-950'
+                      : 'glass-panel-deep text-slate-300'
                   }`}
                 >
                   Red Team Starts / Turn
@@ -578,8 +612,8 @@ const HostConsoleBody: React.FC = () => {
                   onClick={() => sendHostAction('tictactoe:setTurn', { team: 'blue' })}
                   className={`min-h-[44px] px-3 py-2 rounded-xl font-bold text-xs transition-colors cursor-pointer whitespace-nowrap ${
                     mg.ticTacToe.turn === 'blue'
-                      ? 'bg-[#38BDF8] text-slate-950'
-                      : 'bg-slate-900 border border-slate-700 text-slate-300'
+                      ? 'bg-[#4DB8FF] text-slate-950'
+                      : 'glass-panel-deep text-slate-300'
                   }`}
                 >
                   Blue Team Starts / Turn
@@ -603,18 +637,18 @@ const HostConsoleBody: React.FC = () => {
                         onClick={() =>
                           sendHostAction('tictactoe:selectCell', { cellIndex: idx })
                         }
-                        className={`min-h-[64px] p-2 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                        className={`min-h-[64px] p-2 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer backdrop-blur-md ${
                           cell.owner === 'red'
-                            ? 'bg-red-600/30 border-red-400 text-white'
+                            ? 'bg-[#FB6F84]/25 border-[#FB6F84] text-white'
                             : cell.owner === 'blue'
-                            ? 'bg-sky-500/30 border-sky-300 text-white'
+                            ? 'bg-[#4DB8FF]/25 border-[#4DB8FF] text-white'
                             : isSelected
-                            ? 'bg-[#0E2240] border-2 border-[#F59E0B]'
-                            : 'bg-[#030914] border-slate-800 hover:border-slate-700'
+                            ? 'bg-[#0C3554]/65 border-2 border-[#4DB8FF] shadow-[0_0_16px_rgba(77,184,255,0.25)]'
+                            : 'glass-panel-deep hover:border-[#4DB8FF]/50'
                         }`}
                       >
                         <div className="flex items-center justify-between text-[11px] font-['JetBrains_Mono'] font-bold">
-                          <span className="text-amber-400">#{idx + 1}</span>
+                          <span className="text-[#4DB8FF]">#{idx + 1}</span>
                           <span>
                             {club.shortName} × {nation.code}
                           </span>
@@ -632,7 +666,7 @@ const HostConsoleBody: React.FC = () => {
                               />
                             ) : null;
                           })()}
-                          <div className="text-xs font-bold font-['Outfit'] truncate">
+                          <div className="text-xs font-bold font-['Unbounded'] truncate">
                             {cell.owner ? cell.playerName : 'Open Square'}
                           </div>
                         </div>
@@ -643,31 +677,41 @@ const HostConsoleBody: React.FC = () => {
               </div>
 
               {/* Selected Intersection Details + Quick-Fill Reference Hints + Accept/Reject */}
-              <div className="p-3 rounded-xl bg-[#030914] border border-slate-800 space-y-3">
+              <div className="p-3 rounded-xl glass-panel-deep space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {activeCellClub && (
-                      <ClubCrestArtwork clubId={activeCellClub.id} className="w-6 h-6" />
+                      <ClubCrestArtwork
+                        clubId={activeCellClub.id}
+                        logoUrl={activeCellClub.logoUrl}
+                        alt={activeCellClub.name}
+                        className="w-6 h-6"
+                      />
                     )}
                     <span className="text-xs font-bold text-white">
                       {activeCellClub?.name}
                     </span>
-                    <span className="text-slate-500">×</span>
+                    <span className="text-slate-400">×</span>
                     {activeCellNation && (
-                      <ClubCrestArtwork clubId={activeCellNation.id} className="w-6 h-6" />
+                      <ClubCrestArtwork
+                        clubId={activeCellNation.id}
+                        logoUrl={activeCellNation.logoUrl}
+                        alt={activeCellNation.name}
+                        className="w-6 h-6"
+                      />
                     )}
                     <span className="text-xs font-bold text-white">
                       {activeCellNation?.name}
                     </span>
                   </div>
-                  <span className="text-xs font-['JetBrains_Mono'] text-amber-400">
+                  <span className="text-xs font-['JetBrains_Mono'] font-bold text-[#4DB8FF]">
                     Square #{activeCellIndex + 1}
                   </span>
                 </div>
 
                 {/* Quick-Fill Reference Hints */}
                 <div>
-                  <span className="block text-[11px] text-slate-400 mb-1.5">
+                  <span className="block text-[11px] text-slate-300 mb-1.5">
                     Quick-Fill Valid Footballers (Tap to populate):
                   </span>
                   <div className="flex flex-wrap gap-1.5">
@@ -678,7 +722,7 @@ const HostConsoleBody: React.FC = () => {
                           key={hintName}
                           type="button"
                           onClick={() => setSpokenPlayerName(hintName)}
-                          className="min-h-[36px] px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-emerald-300 font-medium cursor-pointer flex items-center gap-1.5"
+                          className="min-h-[36px] px-2.5 py-1 rounded-lg glass-panel-deep hover:border-[#4DB8FF]/60 text-xs text-[#34D399] font-medium cursor-pointer flex items-center gap-1.5"
                         >
                           {hintPhoto && (
                             <img
@@ -701,12 +745,12 @@ const HostConsoleBody: React.FC = () => {
                     value={spokenPlayerName}
                     onChange={(e) => setSpokenPlayerName(e.target.value)}
                     placeholder="Type contestant's spoken footballer name..."
-                    className="w-full min-h-[44px] pl-3.5 pr-12 py-2 rounded-xl bg-[#081326] border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-400"
+                    className="w-full min-h-[44px] pl-3.5 pr-12 py-2 rounded-xl glass-panel-deep text-sm text-white focus:outline-none focus:border-[#4DB8FF]"
                   />
                   {spokenPlayerName.trim() && (() => {
                     const previewPhoto = resolveBzzoiroPlayerImageUrl(spokenPlayerName.trim());
                     return previewPhoto ? (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center p-1 bg-slate-900/90 rounded-lg border border-slate-700">
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center p-1 glass-panel-deep rounded-lg">
                         <img
                           src={previewPhoto}
                           alt="Preview"
@@ -732,7 +776,7 @@ const HostConsoleBody: React.FC = () => {
                       });
                       setSpokenPlayerName('');
                     }}
-                    className="min-h-[48px] px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+                    className="min-h-[48px] px-4 py-2.5 rounded-xl bg-[#34D399] hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>
@@ -751,7 +795,7 @@ const HostConsoleBody: React.FC = () => {
                       });
                       setSpokenPlayerName('');
                     }}
-                    className="min-h-[48px] px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-40 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+                    className="min-h-[48px] px-4 py-2.5 rounded-xl bg-[#FB6F84] hover:bg-rose-400 disabled:opacity-40 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
                   >
                     <XCircle className="w-4 h-4" />
                     <span>Reject & Pass Turn</span>
@@ -761,7 +805,7 @@ const HostConsoleBody: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => sendHostAction('minigame:backToBoard')}
-                  className="w-full min-h-[48px] px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+                  className="w-full min-h-[48px] px-4 py-2.5 rounded-xl glass-panel-deep hover:border-[#4DB8FF]/60 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
                 >
                   <ArrowLeft className="w-4 h-4 shrink-0" />
                   <span>Back to Board (Reset Covers & Shuffle Sports)</span>
@@ -772,16 +816,16 @@ const HostConsoleBody: React.FC = () => {
             /* STANDARD MINI GAMES (IMAGE GUESSING, QUIZ, NUMBER, AUDIO) CONTROLS */
             <section
               key={`host-panel-${state.stage}-${mg?.cardNumber ?? 'board'}`}
-              className={`bg-[#081326] border border-slate-800 rounded-2xl p-4 space-y-4 ${
+              className={`glass-panel glass-noise rounded-2xl p-4 space-y-4 ${
                 mg ? 'animate-minigame-open' : 'animate-board-return'
               }`}
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold font-['Outfit'] text-white">
+                <h2 className="text-sm font-bold font-['Unbounded'] text-white">
                   Mini-Game Content & Live Stage Controls
                 </h2>
                 {mg && (
-                  <span className="font-['JetBrains_Mono'] font-bold text-sm text-amber-400 tabular-nums">
+                  <span className="font-['Chakra_Petch'] font-bold text-sm text-[#4DB8FF] tabular-nums">
                     Timer: 00:{String(mg.timerSeconds).padStart(2, '0')}
                   </span>
                 )}
@@ -789,16 +833,16 @@ const HostConsoleBody: React.FC = () => {
 
               {/* Content Item Selector & Inline Editor */}
               {activeCategory !== 'tictactoe' && (
-                <div className="p-3 rounded-xl bg-[#030914] border border-slate-800 space-y-2.5">
+                <div className="p-3 rounded-xl glass-panel-deep space-y-2.5">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-slate-200 mb-1">
                       Select Saved {activeCategory?.toUpperCase()} Item ({categoryItems.length}{' '}
                       available):
                     </label>
                     <select
                       value={selectedItemId}
                       onChange={(e) => handleSelectContentDropdown(e.target.value)}
-                      className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-[#081326] border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-400"
+                      className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-[#04111E]/90 border border-[#5EC8FF]/30 text-xs text-white focus:outline-none focus:border-[#4DB8FF]"
                     >
                       {categoryItems.map((item) => (
                         <option key={item.id} value={item.id}>
@@ -810,12 +854,12 @@ const HostConsoleBody: React.FC = () => {
                   </div>
 
                   {isImageGuessCategory && (
-                    <div className="p-2.5 rounded-xl bg-[#081326] border border-slate-700/80 space-y-2">
+                    <div className="p-2.5 rounded-xl glass-panel-deep space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-amber-400">
+                        <span className="text-xs font-bold text-[#4DB8FF]">
                           Mystery Blur Control (Live on /studio)
                         </span>
-                        <span className="font-['JetBrains_Mono'] font-bold text-xs px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/40 text-amber-300 tabular-nums">
+                        <span className="font-['JetBrains_Mono'] font-bold text-xs px-2 py-0.5 rounded bg-[#4DB8FF]/15 border border-[#4DB8FF]/40 text-[#7DD3FC] tabular-nums">
                           {inlineBlurAmount}px
                         </span>
                       </div>
@@ -832,7 +876,7 @@ const HostConsoleBody: React.FC = () => {
                             sendHostAction('minigame:setBlur', { blurAmount: val });
                           }
                         }}
-                        className="w-full accent-[#F59E0B] cursor-pointer"
+                        className="w-full accent-[#4DB8FF] cursor-pointer"
                       />
                       <div className="flex flex-wrap items-center justify-between gap-1">
                         {[
@@ -854,8 +898,8 @@ const HostConsoleBody: React.FC = () => {
                             }}
                             className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer ${
                               inlineBlurAmount === preset.val
-                                ? 'bg-[#F59E0B] text-slate-950'
-                                : 'bg-[#030914] border border-slate-700 text-slate-300 hover:border-amber-400/50'
+                                ? 'bg-[#4DB8FF] text-slate-950'
+                                : 'glass-panel-deep text-slate-300 hover:border-[#4DB8FF]/60'
                             }`}
                           >
                             {preset.label}
@@ -866,24 +910,24 @@ const HostConsoleBody: React.FC = () => {
                   )}
 
                   <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">
+                    <label className="block text-[11px] text-slate-300 mb-1">
                       Inline Question / Clue Prompt:
                     </label>
                     <input
                       type="text"
                       value={inlinePrompt}
                       onChange={(e) => setInlinePrompt(e.target.value)}
-                      className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-[#081326] border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-400"
+                      className="w-full min-h-[44px] px-3 py-2 rounded-xl glass-panel-deep text-xs text-white focus:outline-none focus:border-[#4DB8FF]"
                     />
                   </div>
 
                   {isMultipleChoiceCategory && (
-                    <div className="p-2.5 rounded-xl bg-[#081326] border border-slate-700/80 space-y-2">
+                    <div className="p-2.5 rounded-xl glass-panel-deep space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-amber-400">
+                        <span className="text-xs font-bold text-[#4DB8FF]">
                           Multiple Choice Options (A, B, C, D)
                         </span>
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[10px] text-slate-300">
                           Click letter to mark correct
                         </span>
                       </div>
@@ -900,8 +944,8 @@ const HostConsoleBody: React.FC = () => {
                               key={letter}
                               className={`flex items-center gap-2 p-1.5 rounded-lg border transition-colors ${
                                 isCurrentAnswer
-                                  ? 'bg-emerald-950/60 border-emerald-500/70 text-emerald-200 ring-1 ring-emerald-500/50'
-                                  : 'bg-[#030914] border-slate-800 text-slate-200'
+                                  ? 'bg-[#064E3B]/55 border-[#34D399]/75 text-emerald-200 ring-1 ring-[#34D399]/40'
+                                  : 'glass-panel-deep text-slate-200'
                               }`}
                             >
                               <button
@@ -910,10 +954,10 @@ const HostConsoleBody: React.FC = () => {
                                 onClick={() => {
                                   setInlineAnswer(currentOpt || letter);
                                 }}
-                                className={`w-7 h-7 rounded-md font-['Outfit'] font-black text-xs flex items-center justify-center shrink-0 cursor-pointer transition-transform hover:scale-105 ${
+                                className={`w-7 h-7 rounded-md font-['Chakra_Petch'] font-black text-xs flex items-center justify-center shrink-0 cursor-pointer transition-transform hover:scale-105 ${
                                   isCurrentAnswer
-                                    ? 'bg-[#10B981] text-slate-950 shadow-sm'
-                                    : 'bg-slate-700 text-slate-300 hover:bg-amber-400 hover:text-slate-950'
+                                    ? 'bg-[#34D399] text-slate-950 shadow-sm'
+                                    : 'bg-[#0C3554] text-slate-200 hover:bg-[#4DB8FF] hover:text-slate-950'
                                 }`}
                               >
                                 {letter}
@@ -940,21 +984,21 @@ const HostConsoleBody: React.FC = () => {
                   )}
 
                   <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">
+                    <label className="block text-[11px] text-slate-300 mb-1">
                       Inline Private Official Answer:
                     </label>
                     <input
                       type="text"
                       value={inlineAnswer}
                       onChange={(e) => setInlineAnswer(e.target.value)}
-                      className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-[#081326] border border-emerald-500/50 text-xs text-emerald-300 font-semibold focus:outline-none focus:border-emerald-400"
+                      className="w-full min-h-[44px] px-3 py-2 rounded-xl glass-panel-deep border-[#34D399]/50 text-xs text-[#34D399] font-semibold focus:outline-none focus:border-[#34D399]"
                     />
                   </div>
 
                   <button
                     type="button"
                     onClick={handleApplySelectedItem}
-                    className="w-full min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold text-amber-300 transition-colors cursor-pointer whitespace-nowrap"
+                    className="w-full min-h-[44px] px-4 py-2 rounded-xl glass-panel-deep hover:border-[#4DB8FF]/70 text-xs font-bold text-[#7DD3FC] transition-colors cursor-pointer whitespace-nowrap"
                   >
                     Use Selected Item
                   </button>
@@ -963,12 +1007,12 @@ const HostConsoleBody: React.FC = () => {
 
               {/* Audio Playback Controls when in Audio Mini Game */}
               {mg?.category === 'audio' && (
-                <div className="p-3 rounded-xl bg-[#030914] border border-sky-500/40 space-y-2.5">
+                <div className="p-3 rounded-xl glass-panel-deep border-[#4DB8FF]/40 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-sky-300">
+                    <span className="text-xs font-bold text-[#7DD3FC]">
                       Synchronized Studio Audio Controls
                     </span>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[11px] text-slate-300">
                       {mg.audioPlaying ? 'Playing on Studio' : 'Stopped'}
                     </span>
                   </div>
@@ -977,7 +1021,7 @@ const HostConsoleBody: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => sendHostAction('minigame:audioPlay')}
-                      className="min-h-[44px] px-3 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                      className="min-h-[44px] px-3 py-2 rounded-xl bg-[#4DB8FF] hover:bg-[#7DD3FC] text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                     >
                       <Volume2 className="w-4 h-4" />
                       <span>Play Audio Clip</span>
@@ -985,7 +1029,7 @@ const HostConsoleBody: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => sendHostAction('minigame:audioStop')}
-                      className="min-h-[44px] px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                      className="min-h-[44px] px-3 py-2 rounded-xl glass-panel-deep hover:border-[#4DB8FF]/60 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                     >
                       <Square className="w-4 h-4" />
                       <span>Stop Audio</span>
@@ -1008,7 +1052,7 @@ const HostConsoleBody: React.FC = () => {
                   type="button"
                   disabled={!mg}
                   onClick={() => sendHostAction('minigame:startTimer')}
-                  className="min-h-[48px] px-3 py-2.5 rounded-xl bg-[#F59E0B] hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  className="min-h-[48px] px-3 py-2.5 rounded-xl bg-[#4DB8FF] hover:bg-[#7DD3FC] disabled:opacity-40 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap shadow-[0_0_20px_rgba(77,184,255,0.22)]"
                 >
                   <Play className="w-4 h-4 shrink-0" />
                   <span>Start 30s Timer</span>
@@ -1018,7 +1062,7 @@ const HostConsoleBody: React.FC = () => {
                   type="button"
                   disabled={!mg}
                   onClick={() => sendHostAction('minigame:resetTimer')}
-                  className="min-h-[48px] px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  className="min-h-[48px] px-3 py-2.5 rounded-xl glass-panel-deep hover:border-[#4DB8FF]/60 disabled:opacity-40 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
                   <RotateCcw className="w-4 h-4 shrink-0" />
                   <span>Reset Timer</span>
@@ -1029,7 +1073,7 @@ const HostConsoleBody: React.FC = () => {
                 type="button"
                 disabled={!mg}
                 onClick={() => sendHostAction('minigame:revealAnswer')}
-                className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-[#10B981] hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+                className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-[#34D399] hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap shadow-[0_0_24px_rgba(52,211,153,0.25)]"
               >
                 <Eye className="w-4 h-4 shrink-0" />
                 <span>Reveal Answer on Studio</span>
@@ -1046,7 +1090,7 @@ const HostConsoleBody: React.FC = () => {
                       team: state.activeTeam,
                     })
                   }
-                  className="min-h-[48px] px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  className="min-h-[48px] px-4 py-2.5 rounded-xl bg-emerald-500/85 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>
@@ -1063,7 +1107,7 @@ const HostConsoleBody: React.FC = () => {
                       team: state.activeTeam,
                     })
                   }
-                  className="min-h-[48px] px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                  className="min-h-[48px] px-4 py-2.5 rounded-xl bg-[#FB6F84] hover:bg-rose-400 disabled:opacity-40 text-slate-950 font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
                   <XCircle className="w-4 h-4 shrink-0" />
                   <span>Wrong (0)</span>
@@ -1074,7 +1118,7 @@ const HostConsoleBody: React.FC = () => {
                 type="button"
                 disabled={!mg}
                 onClick={() => sendHostAction('minigame:backToBoard')}
-                className="w-full min-h-[48px] px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+                className="w-full min-h-[48px] px-4 py-2.5 rounded-xl glass-panel-deep hover:border-[#4DB8FF]/60 disabled:opacity-40 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
               >
                 <ArrowLeft className="w-4 h-4 shrink-0" />
                 <span>Back to Board</span>

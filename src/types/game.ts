@@ -71,6 +71,8 @@ export interface TicTacToeNation {
   id: string;
   name: string;
   code: string;
+  bzzoiroTeamId?: number;
+  logoUrl?: string;
 }
 
 export interface TicTacToeCell {
@@ -118,6 +120,124 @@ export interface ActiveMiniGameState {
   ticTacToe?: TicTacToeState;
 }
 
+export interface CardSlotCustomization {
+  emojiImageUrl?: string;
+  emojiLabel?: string;
+  emojiScale?: number;
+  cardFrontBgUrl?: string;
+  cardBackBgUrl?: string;
+}
+
+export interface StudioCustomization {
+  showTitlePrimary?: string;
+  showTitleSecondary?: string;
+  showEyebrow?: string;
+  showLogoUrl?: string;
+  showLogoScale?: number;
+  hideShowTitleText?: boolean;
+  stageBgUrl?: string;
+  cardFrontBgUrl?: string;
+  cardBackBgUrl?: string;
+  cardAccentColor?: string;
+  hideEmojiLabels?: boolean;
+  emojiScale?: number;
+  miniGameIconScale?: number;
+  redTeamName?: string;
+  redTeamLogoUrl?: string;
+  blueTeamName?: string;
+  blueTeamLogoUrl?: string;
+  cardSlots?: Record<number, CardSlotCustomization>;
+  miniGameIcons?: Partial<Record<MiniGameCategory, string>>;
+  miniGameIconScales?: Partial<Record<MiniGameCategory, number>>;
+}
+
+export function clampIconScale(value: unknown, fallback = 1): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.round(Math.min(1.8, Math.max(0.5, n)) * 100) / 100;
+}
+
+export function resolveShowLogoScale(
+  customization: StudioCustomization | undefined
+): number {
+  if (
+    typeof customization?.showLogoScale === 'number' &&
+    Number.isFinite(customization.showLogoScale) &&
+    customization.showLogoScale > 0
+  ) {
+    return clampIconScale(customization.showLogoScale, 1);
+  }
+  return 1;
+}
+
+export function resolveCardEmojiScale(
+  customization: StudioCustomization | undefined,
+  cardNumber: number
+): number {
+  const slotScale = customization?.cardSlots?.[cardNumber]?.emojiScale;
+  if (typeof slotScale === 'number' && Number.isFinite(slotScale) && slotScale > 0) {
+    return clampIconScale(slotScale, 1);
+  }
+  if (
+    typeof customization?.emojiScale === 'number' &&
+    Number.isFinite(customization.emojiScale) &&
+    customization.emojiScale > 0
+  ) {
+    return clampIconScale(customization.emojiScale, 1);
+  }
+  return 1;
+}
+
+export function resolveMiniGameIconScale(
+  customization: StudioCustomization | undefined,
+  category: MiniGameCategory
+): number {
+  const scales = customization?.miniGameIconScales;
+  const direct = scales?.[category];
+  if (typeof direct === 'number' && Number.isFinite(direct) && direct > 0) {
+    return clampIconScale(direct, 1);
+  }
+  if (
+    category === 'number' &&
+    typeof scales?.multiple_choice === 'number' &&
+    scales.multiple_choice > 0
+  ) {
+    return clampIconScale(scales.multiple_choice, 1);
+  }
+  if (
+    category === 'multiple_choice' &&
+    typeof scales?.number === 'number' &&
+    scales.number > 0
+  ) {
+    return clampIconScale(scales.number, 1);
+  }
+  if (
+    typeof customization?.miniGameIconScale === 'number' &&
+    Number.isFinite(customization.miniGameIconScale) &&
+    customization.miniGameIconScale > 0
+  ) {
+    return clampIconScale(customization.miniGameIconScale, 1);
+  }
+  return 1;
+}
+
+export function resolveCustomMiniGameIcon(
+  customization: StudioCustomization | undefined,
+  category: MiniGameCategory
+): string | undefined {
+  const icons = customization?.miniGameIcons;
+  if (!icons) return undefined;
+  const direct = icons[category]?.trim();
+  if (direct) return direct;
+  if (category === 'number' && icons.multiple_choice?.trim()) {
+    return icons.multiple_choice.trim();
+  }
+  if (category === 'multiple_choice' && icons.number?.trim()) {
+    return icons.number.trim();
+  }
+  return undefined;
+}
+
 export interface GameSessionState {
   sessionId: string;
   redScore: number;
@@ -129,10 +249,11 @@ export interface GameSessionState {
     timestamp: number;
   } | null;
   selectedCardNumber: number; // 1..8
-  stage: 'board' | 'minigame';
+  stage: 'home' | 'board' | 'minigame';
   boardDeckId?: number;
   cards: BoardCard[];
   activeMiniGame: ActiveMiniGameState | null;
+  customization?: StudioCustomization;
   revision?: number;
   updatedAt: number;
 }

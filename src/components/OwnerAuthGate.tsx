@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, Lock, KeyRound, Tv } from 'lucide-react';
 import { useGameSync } from '../context/GameSyncContext';
+import { OceanicBackdrop } from './OceanicBackdrop';
 
 export const OwnerAuthGate: React.FC<{
   title: string;
@@ -29,25 +30,26 @@ export const OwnerAuthGate: React.FC<{
   };
 
   return (
-    <div className="min-h-screen bg-[#030914] text-slate-100 flex items-center justify-center p-6 font-['Plus_Jakarta_Sans']">
-      <div className="w-full max-w-md bg-[#081326] border border-slate-800 rounded-2xl p-8 shadow-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400">
+    <div className="relative min-h-screen bg-[#040F1A] text-slate-100 flex items-center justify-center p-6 font-['Chakra_Petch'] overflow-hidden">
+      <OceanicBackdrop fixed />
+      <div className="relative z-10 w-full max-w-md glass-panel glass-noise rounded-2xl p-8">
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-xl bg-[#4DB8FF]/15 border border-[#4DB8FF]/45 flex items-center justify-center text-[#4DB8FF] shrink-0 shadow-[inset_0_1px_0_rgba(186,230,253,0.3)]">
               <Shield className="w-6 h-6" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold font-['Outfit'] tracking-tight text-white">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold font-['Unbounded'] tracking-tight text-white truncate">
                 {title}
               </h1>
-              <p className="text-xs text-slate-400">{subtitle}</p>
+              <p className="text-xs text-slate-300">{subtitle}</p>
             </div>
           </div>
           <a
             href="/studio"
             target="_blank"
             rel="noreferrer"
-            className="min-h-[44px] px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs font-medium text-sky-400 hover:bg-slate-800 flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
+            className="min-h-[44px] px-3 py-2 rounded-xl glass-panel-deep text-xs font-bold text-[#4DB8FF] hover:border-[#4DB8FF]/60 flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
           >
             <Tv className="w-4 h-4" />
             Studio Screen
@@ -59,7 +61,7 @@ export const OwnerAuthGate: React.FC<{
           type="button"
           onClick={handleGoogleSignIn}
           disabled={submitting}
-          className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-white text-slate-950 font-semibold text-sm flex items-center justify-center gap-3 hover:bg-slate-100 transition-colors cursor-pointer mb-6"
+          className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-white/95 text-slate-950 font-bold text-sm flex items-center justify-center gap-3 hover:bg-white transition-colors cursor-pointer mb-6 shadow-lg"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -83,32 +85,32 @@ export const OwnerAuthGate: React.FC<{
         </button>
 
         <div className="relative flex py-2 items-center mb-6">
-          <div className="flex-grow border-t border-slate-800" />
-          <span className="flex-shrink mx-3 text-xs text-slate-400">
+          <div className="flex-grow border-t border-[#4DB8FF]/20" />
+          <span className="flex-shrink mx-3 text-xs text-slate-300">
             Or Studio Owner Passcode Fallback
           </span>
-          <div className="flex-grow border-t border-slate-800" />
+          <div className="flex-grow border-t border-[#4DB8FF]/20" />
         </div>
 
         <form onSubmit={handlePasscodeSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-200 mb-1.5">
               Studio Owner Passcode (Default: 2026)
             </label>
             <div className="relative">
-              <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <KeyRound className="w-4 h-4 text-[#4DB8FF] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="password"
                 value={passcode}
                 onChange={(e) => setPasscode(e.target.value)}
                 placeholder="Enter Studio Owner Passcode (2026)"
-                className="w-full min-h-[48px] pl-10 pr-4 py-2.5 rounded-xl bg-[#030914] border border-slate-700 text-white font-['JetBrains_Mono'] text-sm focus:outline-none focus:border-amber-400"
+                className="w-full min-h-[48px] pl-10 pr-4 py-2.5 rounded-xl glass-panel-deep text-white font-['JetBrains_Mono'] text-sm focus:outline-none focus:border-[#4DB8FF]"
               />
             </div>
           </div>
 
           {authError && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300">
+            <div className="p-3 rounded-xl bg-[#FB6F84]/15 border border-[#FB6F84]/40 text-xs text-rose-200">
               {authError}
             </div>
           )}
@@ -116,7 +118,7 @@ export const OwnerAuthGate: React.FC<{
           <button
             type="submit"
             disabled={submitting}
-            className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-[#4DB8FF] hover:bg-[#7DD3FC] text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-[0_0_24px_rgba(77,184,255,0.28)]"
           >
             <Lock className="w-4 h-4" />
             <span>{submitting ? 'Unlocking Console...' : 'Unlock Broadcast Console'}</span>

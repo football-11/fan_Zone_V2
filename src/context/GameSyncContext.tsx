@@ -6,6 +6,8 @@ import {
   FIXED_EMOJI_COVERS,
   GameSessionState,
   MINI_GAME_CATEGORIES,
+  MiniGameCategory,
+  StudioCustomization,
   TeamId,
   TicTacToeClub,
   TicTacToeNation,
@@ -19,7 +21,7 @@ import {
   syncGameSessionToFirestore,
   subscribeToGameSession,
 } from '../firebase';
-import { resolveBzzoiroPlayerImageUrl } from '../data/bzzoiroSports';
+import { BZZOIRO_CLUB_POOL, resolveBzzoiroPlayerImageUrl } from '../data/bzzoiroSports';
 
 interface OwnerAuthState {
   authenticated: boolean;
@@ -69,18 +71,7 @@ const STATE_STORAGE_KEY = 'fanzone_live_state_v1';
 const CONTENT_STORAGE_KEY = 'fanzone_content_items_v1';
 const SYNC_CHANNEL_NAME = 'fanzone_live_sync_channel';
 
-const CLUB_POOL: TicTacToeClub[] = [
-  { id: 'real_madrid', name: 'Real Madrid', shortName: 'RMA' },
-  { id: 'barcelona', name: 'FC Barcelona', shortName: 'BAR' },
-  { id: 'man_city', name: 'Manchester City', shortName: 'MCI' },
-  { id: 'psg', name: 'Paris Saint-Germain', shortName: 'PSG' },
-  { id: 'chelsea', name: 'Chelsea FC', shortName: 'CHE' },
-  { id: 'ac_milan', name: 'AC Milan', shortName: 'MIL' },
-  { id: 'man_united', name: 'Manchester United', shortName: 'MUN' },
-  { id: 'juventus', name: 'Juventus FC', shortName: 'JUV' },
-  { id: 'bayern', name: 'Bayern Munich', shortName: 'BAY' },
-  { id: 'inter_milan', name: 'Inter Milan', shortName: 'INT' },
-];
+const CLUB_POOL: TicTacToeClub[] = BZZOIRO_CLUB_POOL;
 
 const CLUB_IDS = new Set(CLUB_POOL.map((c) => c.id));
 
@@ -187,6 +178,8 @@ function createFallbackTicTacToe(startingTeam: TeamId = 'red'): TicTacToeState {
     id: c.id,
     name: c.name,
     code: c.shortName,
+    bzzoiroTeamId: c.bzzoiroTeamId,
+    logoUrl: c.logoUrl,
   }));
   const cells = [];
   const hintsByCell: Record<number, string[]> = {};
@@ -211,19 +204,23 @@ function createFallbackTicTacToe(startingTeam: TeamId = 'red'): TicTacToeState {
   };
 }
 
-function createFallbackCards(): BoardCard[] {
+function createFallbackCards(customization?: StudioCustomization): BoardCard[] {
   const cats = shuffleArray(MINI_GAME_CATEGORIES);
-  return FIXED_EMOJI_COVERS.map((cover, idx) => ({
-    cardNumber: cover.cardNumber,
-    emojiId: cover.emojiId,
-    emojiLabel: cover.emojiLabel,
-    category: cats[idx].category,
-    categoryTitle: cats[idx].title,
-    revealed: false,
-    scored: false,
-    scoreResult: 'pending',
-    awardedTeam: null,
-  }));
+  return FIXED_EMOJI_COVERS.map((cover, idx) => {
+    const slotCustom = customization?.cardSlots?.[cover.cardNumber];
+    const customLabel = slotCustom?.emojiLabel?.trim();
+    return {
+      cardNumber: cover.cardNumber,
+      emojiId: cover.emojiId,
+      emojiLabel: customLabel || cover.emojiLabel,
+      category: cats[idx].category,
+      categoryTitle: cats[idx].title,
+      revealed: false,
+      scored: false,
+      scoreResult: 'pending',
+      awardedTeam: null,
+    };
+  });
 }
 
 const DEFAULT_FALLBACK_ITEMS: ContentItem[] = [
@@ -308,7 +305,7 @@ function createDefaultSessionState(): GameSessionState {
     activeTeam: 'red',
     lastScorePulse: null,
     selectedCardNumber: 1,
-    stage: 'board',
+    stage: 'home',
     boardDeckId: 1,
     cards: createFallbackCards(),
     activeMiniGame: null,
@@ -930,12 +927,24 @@ export const GameSyncProvider: React.FC<{
             break;
           }
 
-          case 'card:select': {
-            const revealedCard = next.cards.find((c) => c.revealed);
-            if (revealedCard) {
-              next.selectedCardNumber = revealedCard.cardNumber;
-              break;
+          case 'stage:showHome':
+            if (next.activeMiniGame?.audioPlaying) {
+              audioCmd = { action: 'stop' };
             }
+            next.stage = 'home';
+            next.activeMiniGame = null;
+            break;
+
+          case 'stage:revealBoard':
+            if (next.activeMiniGame?.audioPlaying) {
+              audioCmd = { action: 'stop' };
+            }
+            next.stage = 'board';
+            next.activeMiniGame = null;
+            next.boardDeckId = (next.boardDeckId || 1) + 1;
+            break;
+
+          case 'card:select': {
             const cardNum = Number(payload.cardNumber);
             if (cardNum >= 1 && cardNum <= 8) {
               next.selectedCardNumber = cardNum;
@@ -944,10 +953,9 @@ export const GameSyncProvider: React.FC<{
           }
 
           case 'card:reveal': {
-            const revealedCard = next.cards.find((c) => c.revealed);
-            if (revealedCard) {
-              next.selectedCardNumber = revealedCard.cardNumber;
-              break;
+            if (next.stage === 'home') {
+              next.stage = 'board';
+              next.boardDeckId = (next.boardDeckId || 1) + 1;
             }
             const cardNum = Number(payload.cardNumber) || next.selectedCardNumber;
             const card = next.cards.find((c) => c.cardNumber === cardNum);
@@ -959,20 +967,27 @@ export const GameSyncProvider: React.FC<{
           }
 
           case 'card:openMiniGame': {
-            const revealedCard = next.cards.find((c) => c.revealed);
-            const cardNum = revealedCard
-              ? revealedCard.cardNumber
-              : Number(payload.cardNumber) || next.selectedCardNumber;
-            const card = next.cards.find((c) => c.cardNumber === cardNum);
-            if (!card) break;
-            next.selectedCardNumber = card.cardNumber;
-            card.revealed = true;
+            const requestedCategory = payload.category as MiniGameCategory | undefined;
+            const cardNum = Number(payload.cardNumber) || next.selectedCardNumber;
+            const card =
+              (payload.cardNumber ? next.cards.find((c) => c.cardNumber === Number(payload.cardNumber)) : undefined) ||
+              (requestedCategory ? next.cards.find((c) => c.category === requestedCategory) : undefined) ||
+              next.cards.find((c) => c.cardNumber === cardNum);
+            const targetCategory = requestedCategory || card?.category;
+            if (!targetCategory) break;
+            const targetCardNumber = card?.cardNumber ?? cardNum;
+            const targetTitle =
+              card?.categoryTitle ||
+              MINI_GAME_CATEGORIES.find((m) => m.category === targetCategory)?.title ||
+              targetCategory;
+            next.selectedCardNumber = targetCardNumber;
+            if (card) card.revealed = true;
             next.stage = 'minigame';
-            if (card.category === 'tictactoe') {
+            if (targetCategory === 'tictactoe') {
               next.activeMiniGame = {
-                cardNumber: card.cardNumber,
-                category: card.category,
-                categoryTitle: card.categoryTitle,
+                cardNumber: targetCardNumber,
+                category: targetCategory,
+                categoryTitle: targetTitle,
                 snapshot: null,
                 timerSeconds: 30,
                 timerRunning: false,
@@ -980,23 +995,23 @@ export const GameSyncProvider: React.FC<{
                 imageUnblurred: false,
                 audioPlaying: false,
                 audioCommandTimestamp: Date.now(),
-                scored: card.scored,
-                scoreResult: card.scoreResult,
-                awardedTeam: card.awardedTeam || null,
+                scored: card?.scored ?? false,
+                scoreResult: card?.scoreResult ?? 'pending',
+                awardedTeam: card?.awardedTeam || null,
                 ticTacToe: createFallbackTicTacToe(next.activeTeam),
               };
             } else {
               const catItems = contentItems.filter(
                 (i) =>
-                  i.category === card.category ||
-                  (card.category === 'multiple_choice' && (i.category as string) === 'number')
+                  i.category === targetCategory ||
+                  (targetCategory === 'multiple_choice' && (i.category as string) === 'number')
               );
               const chosen =
                 (payload.itemId && catItems.find((i) => i.id === payload.itemId)) || catItems[0];
               next.activeMiniGame = {
-                cardNumber: card.cardNumber,
-                category: card.category,
-                categoryTitle: card.categoryTitle,
+                cardNumber: targetCardNumber,
+                category: targetCategory,
+                categoryTitle: targetTitle,
                 snapshot: chosen
                   ? {
                       itemId: chosen.id,
@@ -1014,12 +1029,12 @@ export const GameSyncProvider: React.FC<{
                     }
                   : {
                       itemId: 'fallback',
-                      category: card.category as ContentCategory,
-                      title: card.categoryTitle,
-                      prompt: card.categoryTitle,
+                      category: targetCategory as ContentCategory,
+                      title: targetTitle,
+                      prompt: targetTitle,
                       answer: 'Official Answer',
                       options:
-                        card.category === 'multiple_choice'
+                        targetCategory === 'multiple_choice'
                           ? ['Option A', 'Option B', 'Option C', 'Option D']
                           : undefined,
                       blurAmount: 28,
@@ -1030,9 +1045,9 @@ export const GameSyncProvider: React.FC<{
                 imageUnblurred: false,
                 audioPlaying: false,
                 audioCommandTimestamp: Date.now(),
-                scored: card.scored,
-                scoreResult: card.scoreResult,
-                awardedTeam: card.awardedTeam || null,
+                scored: card?.scored ?? false,
+                scoreResult: card?.scoreResult ?? 'pending',
+                awardedTeam: card?.awardedTeam || null,
               };
             }
             break;
@@ -1048,20 +1063,89 @@ export const GameSyncProvider: React.FC<{
             next.stage = 'board';
             next.activeMiniGame = null;
             next.boardDeckId = (next.boardDeckId || 1) + 1;
-            next.cards = createFallbackCards();
+            next.cards = createFallbackCards(next.customization);
             break;
 
           case 'board:newGame':
+            if (next.activeMiniGame?.audioPlaying) {
+              audioCmd = { action: 'stop' };
+            }
             next.redScore = 0;
             next.blueScore = 0;
             next.activeTeam = 'red';
             next.lastScorePulse = null;
             next.selectedCardNumber = 1;
-            next.stage = 'board';
+            next.stage = 'home';
             next.activeMiniGame = null;
             next.boardDeckId = (next.boardDeckId || 1) + 1;
-            next.cards = createFallbackCards();
+            next.cards = createFallbackCards(next.customization);
             break;
+
+          case 'customization:update': {
+            const incoming = (payload.customization || {}) as StudioCustomization;
+            const prev = next.customization || {};
+            const mergedSlots: Record<number, any> = { ...(prev.cardSlots || {}) };
+            if (incoming.cardSlots) {
+              for (const [k, v] of Object.entries(incoming.cardSlots)) {
+                const num = Number(k);
+                if (num >= 1 && num <= 8) {
+                  mergedSlots[num] = {
+                    ...(mergedSlots[num] || {}),
+                    ...(v || {}),
+                  };
+                }
+              }
+            }
+            const mergedMiniGameIcons: Partial<Record<MiniGameCategory, string>> = {
+              ...(prev.miniGameIcons || {}),
+            };
+            if (incoming.miniGameIcons) {
+              for (const [k, v] of Object.entries(incoming.miniGameIcons)) {
+                if (typeof v === 'string') {
+                  if (v.trim()) {
+                    mergedMiniGameIcons[k as MiniGameCategory] = v.trim();
+                  } else {
+                    delete mergedMiniGameIcons[k as MiniGameCategory];
+                  }
+                }
+              }
+            }
+            const mergedMiniGameIconScales: Partial<Record<MiniGameCategory, number>> = {
+              ...(prev.miniGameIconScales || {}),
+            };
+            if (incoming.miniGameIconScales) {
+              for (const [k, v] of Object.entries(incoming.miniGameIconScales)) {
+                if (v === null || v === undefined || Number(v) <= 0) {
+                  delete mergedMiniGameIconScales[k as MiniGameCategory];
+                } else if (Number.isFinite(Number(v))) {
+                  mergedMiniGameIconScales[k as MiniGameCategory] =
+                    Math.round(Math.min(1.8, Math.max(0.5, Number(v))) * 100) / 100;
+                }
+              }
+            }
+            next.customization = {
+              ...prev,
+              ...incoming,
+              cardSlots: mergedSlots,
+              miniGameIcons: mergedMiniGameIcons,
+              miniGameIconScales: mergedMiniGameIconScales,
+            };
+            next.cards.forEach((c) => {
+              const defCover = FIXED_EMOJI_COVERS.find((f) => f.cardNumber === c.cardNumber);
+              const customLabel = next.customization?.cardSlots?.[c.cardNumber]?.emojiLabel?.trim();
+              c.emojiLabel = customLabel || defCover?.emojiLabel || c.emojiLabel;
+            });
+            break;
+          }
+
+          case 'customization:reset': {
+            next.customization = undefined;
+            next.cards.forEach((c) => {
+              const defCover = FIXED_EMOJI_COVERS.find((f) => f.cardNumber === c.cardNumber);
+              if (defCover) c.emojiLabel = defCover.emojiLabel;
+            });
+            break;
+          }
 
           case 'minigame:useItem': {
             const mg = next.activeMiniGame;
@@ -1187,8 +1271,7 @@ export const GameSyncProvider: React.FC<{
             if (next.activeMiniGame?.audioPlaying) {
               audioCmd = { action: 'stop' };
             }
-            next.boardDeckId = (next.boardDeckId || 1) + 1;
-            next.cards = createFallbackCards();
+            next.cards.forEach((c) => (c.revealed = false));
             next.stage = 'board';
             next.activeMiniGame = null;
             break;

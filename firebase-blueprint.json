@@ -84,6 +84,10 @@
         "stage": {
           "type": "string"
         },
+        "customization": {
+          "type": "object",
+          "description": "Custom uploaded emojis, card graphics, show title, team logos, and studio monitor styling"
+        },
         "revision": {
           "type": "number"
         },

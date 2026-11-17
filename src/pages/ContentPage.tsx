@@ -12,11 +12,18 @@ import {
 } from 'lucide-react';
 import { GameSyncProvider, useGameSync } from '../context/GameSyncContext';
 import { OwnerAuthGate } from '../components/OwnerAuthGate';
-import { CONTENT_CATEGORIES, ContentCategory, ContentItem } from '../types/game';
+import { OceanicBackdrop } from '../components/OceanicBackdrop';
+import {
+  CONTENT_CATEGORIES,
+  ContentCategory,
+  ContentItem,
+  resolveCustomMiniGameIcon,
+} from '../types/game';
 import { CategoryBadgeArtwork } from '../components/BroadcastArtwork';
 
 const ContentManagerBody: React.FC = () => {
   const {
+    state,
     contentItems,
     ownerAuth,
     logoutOwner,
@@ -212,17 +219,19 @@ const ContentManagerBody: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#030914] text-slate-100 flex flex-col font-['Plus_Jakarta_Sans']">
+    <div className="relative min-h-screen bg-[#040F1A] text-slate-100 flex flex-col font-['Plus_Jakarta_Sans']">
+      <OceanicBackdrop fixed />
+
       {/* Top Bar Contract: 3 Zones Separated by gap-8 */}
-      <header className="flex items-center justify-between gap-8 px-6 py-3 bg-[#081326] border-b border-slate-800">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-8 px-6 py-3 glass-header">
         <Link
           to="/content"
-          className="text-lg font-extrabold font-['Outfit'] tracking-tight text-white whitespace-nowrap shrink-0"
+          className="text-lg font-extrabold font-['Unbounded'] tracking-tight text-white whitespace-nowrap shrink-0"
         >
-          FanZone Content Manager
+          <span className="text-[#4DB8FF]">FanZone</span> Content Manager
         </Link>
 
-        <nav className="flex items-center gap-6 text-sm font-medium text-slate-300">
+        <nav className="flex items-center gap-6 text-sm font-semibold text-slate-300 font-['Chakra_Petch']">
           <Link
             to="/host"
             className="hover:text-white transition-colors whitespace-nowrap shrink-0"
@@ -231,15 +240,21 @@ const ContentManagerBody: React.FC = () => {
           </Link>
           <Link
             to="/content"
-            className="text-amber-400 hover:text-amber-300 transition-colors whitespace-nowrap shrink-0"
+            className="text-[#4DB8FF] hover:text-[#7DD3FC] transition-colors whitespace-nowrap shrink-0"
           >
             Content Manager
+          </Link>
+          <Link
+            to="/customize"
+            className="hover:text-white transition-colors whitespace-nowrap shrink-0"
+          >
+            Studio Customizer
           </Link>
           <Link
             to="/studio"
             target="_blank"
             rel="noreferrer"
-            className="hover:text-sky-400 transition-colors whitespace-nowrap shrink-0"
+            className="hover:text-[#4DB8FF] transition-colors whitespace-nowrap shrink-0"
           >
             Studio Display
           </Link>
@@ -249,16 +264,16 @@ const ContentManagerBody: React.FC = () => {
           <button
             type="button"
             onClick={logoutOwner}
-            className="min-h-[44px] px-4 py-2 text-xs font-semibold text-slate-200 bg-slate-900 border border-slate-700 rounded-lg hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="min-h-[44px] px-4 py-2 text-xs font-bold text-slate-200 glass-panel-deep rounded-xl hover:border-[#4DB8FF]/60 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             Sign Out
           </button>
         </div>
       </header>
 
-      <main className="flex-1 max-w-[1440px] w-full mx-auto p-6 space-y-6">
+      <main className="relative z-10 flex-1 max-w-[1440px] w-full mx-auto p-6 space-y-6">
         {/* 7 Content Category Tabs */}
-        <div className="flex flex-wrap items-center gap-2 p-2 bg-[#081326] border border-slate-800 rounded-2xl">
+        <div className="flex flex-wrap items-center gap-2 p-2 glass-panel glass-noise rounded-2xl">
           {CONTENT_CATEGORIES.map((cat) => {
             const count = contentItems.filter((i) => i.category === cat.id).length;
             const isActive = activeTab === cat.id;
@@ -272,16 +287,16 @@ const ContentManagerBody: React.FC = () => {
                   setConfirmDeleteId(null);
                   setUploadError(null);
                 }}
-                className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
+                className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-extrabold transition-colors flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   isActive
-                    ? 'bg-[#F59E0B] text-slate-950 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                    ? 'bg-[#4DB8FF] text-slate-950 shadow-[0_0_20px_rgba(77,184,255,0.28)]'
+                    : 'text-slate-300 hover:text-white hover:bg-[#0D3350]/55'
                 }`}
               >
                 <span>{cat.label}</span>
                 <span
                   className={`font-['JetBrains_Mono'] tabular-nums text-[11px] ${
-                    isActive ? 'text-slate-900' : 'text-slate-500'
+                    isActive ? 'text-slate-900' : 'text-[#7DD3FC]/75'
                   }`}
                 >
                   ({count})
@@ -293,28 +308,32 @@ const ContentManagerBody: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* LEFT: Add New Content Item Form */}
-          <section className="lg:col-span-5 bg-[#081326] border border-slate-800 rounded-2xl p-6 space-y-4">
+          <section className="lg:col-span-5 glass-panel glass-noise rounded-2xl p-6 space-y-4">
             <div className="flex items-center gap-3">
-              <CategoryBadgeArtwork category={activeTab} className="w-12 h-12 shrink-0" />
+              <CategoryBadgeArtwork
+                category={activeTab}
+                customIconUrl={resolveCustomMiniGameIcon(state?.customization, activeTab)}
+                className="w-12 h-12 shrink-0"
+              />
               <div>
-                <h2 className="text-lg font-bold font-['Outfit'] text-white">
+                <h2 className="text-lg font-bold font-['Unbounded'] text-white">
                   Add New {currentTabConfig.label} Item
                 </h2>
-                <p className="text-xs text-slate-400">{currentTabConfig.description}</p>
+                <p className="text-xs text-slate-300">{currentTabConfig.description}</p>
               </div>
             </div>
 
             <form onSubmit={handleCreateItem} className="space-y-4">
               {currentTabConfig.mediaType !== 'none' && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-200 mb-1.5">
                     {currentTabConfig.mediaType === 'image'
                       ? 'Upload Image File (PNG/JPG/WEBP)'
                       : 'Upload Audio Clip (MP3/WAV/OGG/M4A)'}
                   </label>
 
-                  <label className="min-h-[48px] px-4 py-3 rounded-xl bg-[#030914] border border-dashed border-slate-700 hover:border-amber-400 text-xs font-semibold text-slate-300 flex items-center justify-center gap-2 cursor-pointer transition-colors">
-                    <Upload className="w-4 h-4 text-amber-400" />
+                  <label className="min-h-[48px] px-4 py-3 rounded-xl glass-panel-deep border-dashed border-[#4DB8FF]/40 hover:border-[#4DB8FF] text-xs font-semibold text-slate-200 flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                    <Upload className="w-4 h-4 text-[#4DB8FF]" />
                     <span>
                       Choose {currentTabConfig.mediaType === 'image' ? 'Image' : 'Audio'} File to
                       Upload
@@ -337,13 +356,13 @@ const ContentManagerBody: React.FC = () => {
                   {/* Upload Progress Bar */}
                   {uploadProgress !== null && (
                     <div className="mt-2 space-y-1">
-                      <div className="flex justify-between text-[11px] font-['JetBrains_Mono'] text-amber-400">
+                      <div className="flex justify-between text-[11px] font-['JetBrains_Mono'] text-[#4DB8FF]">
                         <span>Uploading Media...</span>
                         <span>{uploadProgress}%</span>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-slate-900 overflow-hidden">
+                      <div className="w-full h-2 rounded-full bg-[#04111E]/90 overflow-hidden">
                         <div
-                          className="h-full bg-[#F59E0B] transition-all duration-150"
+                          className="h-full bg-[#4DB8FF] transition-all duration-150"
                           style={{ width: `${uploadProgress}%` }}
                         />
                       </div>
@@ -351,7 +370,7 @@ const ContentManagerBody: React.FC = () => {
                   )}
 
                   {uploadError && (
-                    <p className="mt-1.5 text-xs text-red-400">{uploadError}</p>
+                    <p className="mt-1.5 text-xs text-[#FB6F84]">{uploadError}</p>
                   )}
 
                   <div className="mt-2">
@@ -364,23 +383,23 @@ const ContentManagerBody: React.FC = () => {
                           ? 'Or paste /samples/... image path'
                           : 'Or paste /samples/... audio path'
                       }
-                      className="w-full min-h-[44px] px-3 py-2 rounded-xl bg-[#030914] border border-slate-800 text-xs text-slate-300 focus:outline-none focus:border-amber-400"
+                      className="w-full min-h-[44px] px-3 py-2 rounded-xl glass-panel-deep text-xs text-slate-200 focus:outline-none focus:border-[#4DB8FF]"
                     />
                   </div>
 
                   {/* Mystery Blur Control & Live Preview for All Image Guess Games */}
                   {currentTabConfig.mediaType === 'image' && (
-                    <div className="mt-3 p-3.5 rounded-xl bg-[#030914] border border-slate-800 space-y-3">
+                    <div className="mt-3 p-3.5 rounded-xl glass-panel-deep space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <label className="block text-xs font-bold text-amber-400">
+                          <label className="block text-xs font-bold text-[#4DB8FF]">
                             Mystery Blur Control (Studio Starting Blur)
                           </label>
-                          <p className="text-[11px] text-slate-400">
+                          <p className="text-[11px] text-slate-300">
                             Adjust how blurred this photo appears on /studio before reveal
                           </p>
                         </div>
-                        <span className="font-['JetBrains_Mono'] font-bold text-xs px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 tabular-nums">
+                        <span className="font-['JetBrains_Mono'] font-bold text-xs px-2.5 py-1 rounded-lg bg-[#4DB8FF]/15 border border-[#4DB8FF]/40 text-[#7DD3FC] tabular-nums">
                           {blurAmount}px
                         </span>
                       </div>
@@ -392,7 +411,7 @@ const ContentManagerBody: React.FC = () => {
                         step={2}
                         value={blurAmount}
                         onChange={(e) => setBlurAmount(Number(e.target.value))}
-                        className="w-full accent-[#F59E0B] cursor-pointer"
+                        className="w-full accent-[#4DB8FF] cursor-pointer"
                       />
 
                       <div className="flex flex-wrap items-center justify-between gap-1.5">
@@ -410,8 +429,8 @@ const ContentManagerBody: React.FC = () => {
                             onClick={() => setBlurAmount(preset.val)}
                             className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
                               blurAmount === preset.val
-                                ? 'bg-[#F59E0B] text-slate-950 font-bold'
-                                : 'bg-[#081326] border border-slate-700 text-slate-300 hover:border-amber-400/50'
+                                ? 'bg-[#4DB8FF] text-slate-950 font-extrabold'
+                                : 'glass-panel-deep text-slate-300 hover:border-[#4DB8FF]/60'
                             }`}
                           >
                             {preset.label}
@@ -421,7 +440,7 @@ const ContentManagerBody: React.FC = () => {
 
                       <div className="space-y-2 pt-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-semibold text-slate-400">
+                          <span className="text-[11px] font-semibold text-slate-300">
                             {mediaUrl
                               ? 'Live Broadcast Blur Preview (Uploaded Photo):'
                               : 'Live Broadcast Blur Preview (Sample Reference):'}
@@ -429,14 +448,14 @@ const ContentManagerBody: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setPreviewBlurred((prev) => !prev)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-[11px] font-semibold text-sky-300 cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg glass-panel-deep hover:border-[#4DB8FF]/60 text-[11px] font-semibold text-[#7DD3FC] cursor-pointer"
                           >
                             {previewBlurred
                               ? `Showing Blurred (${blurAmount}px) · Tap to Test Reveal`
                               : 'Showing Revealed (0px) · Tap to Test Blur'}
                           </button>
                         </div>
-                        <div className="relative p-3 rounded-xl bg-[#081326] border border-slate-800 flex items-center justify-center h-44 overflow-hidden">
+                        <div className="relative p-3 rounded-xl glass-panel-deep flex items-center justify-center h-44 overflow-hidden">
                           <img
                             src={
                               mediaUrl ||
@@ -455,7 +474,7 @@ const ContentManagerBody: React.FC = () => {
                             }}
                             className="max-h-full max-w-full object-contain rounded-lg transition-all duration-300"
                           />
-                          <span className="pointer-events-none absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 border border-white/15 text-[10px] font-['JetBrains_Mono'] text-amber-300">
+                          <span className="pointer-events-none absolute bottom-2 right-2 px-2 py-0.5 rounded bg-[#04111E]/85 border border-[#4DB8FF]/40 text-[10px] font-['JetBrains_Mono'] text-[#7DD3FC]">
                             {previewBlurred ? `BLUR ${blurAmount}px` : 'UNBLURRED 0px'}
                           </span>
                         </div>
@@ -464,7 +483,7 @@ const ContentManagerBody: React.FC = () => {
                   )}
 
                   {mediaUrl && currentTabConfig.mediaType === 'audio' && (
-                    <div className="mt-2 p-2 rounded-xl bg-[#030914] border border-slate-800">
+                    <div className="mt-2 p-2 rounded-xl glass-panel-deep">
                       <audio controls src={mediaUrl} className="w-full h-10" />
                     </div>
                   )}
@@ -472,7 +491,7 @@ const ContentManagerBody: React.FC = () => {
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-200 mb-1">
                   Item Title / Short Label
                 </label>
                 <input
@@ -484,12 +503,12 @@ const ContentManagerBody: React.FC = () => {
                       ? 'e.g., Messi 2012 Calendar Goals'
                       : 'e.g., 2011/12 Championship Home Kit'
                   }
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-[#030914] border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-400"
+                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl glass-panel-deep text-sm text-white focus:outline-none focus:border-[#4DB8FF]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-200 mb-1">
                   {activeTab === 'quiz' || isMultipleChoiceTab
                     ? 'Question Text (Displayed on Studio Screen)'
                     : 'Clue / Question Prompt'}
@@ -503,17 +522,17 @@ const ContentManagerBody: React.FC = () => {
                       ? 'Enter multiple choice question shown on Studio display...'
                       : 'Enter the question or clue shown to contestants...'
                   }
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#030914] border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-400"
+                  className="w-full px-3.5 py-2 rounded-xl glass-panel-deep text-sm text-white focus:outline-none focus:border-[#4DB8FF]"
                 />
               </div>
 
               {isMultipleChoiceTab && (
-                <div className="p-3.5 rounded-xl bg-[#030914] border border-slate-700/80 space-y-3">
+                <div className="p-3.5 rounded-xl glass-panel-deep space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-400">
+                    <span className="text-xs font-bold text-[#4DB8FF]">
                       4 Multiple Choice Options (A, B, C, D)
                     </span>
-                    <span className="text-[11px] text-emerald-400 font-semibold">
+                    <span className="text-[11px] text-[#34D399] font-semibold">
                       Click letter to mark correct
                     </span>
                   </div>
@@ -526,8 +545,8 @@ const ContentManagerBody: React.FC = () => {
                           key={letter}
                           className={`flex items-center gap-2 p-2 rounded-xl border transition-colors ${
                             isCorrect
-                              ? 'bg-emerald-950/60 border-emerald-500 text-white ring-1 ring-emerald-500/50'
-                              : 'bg-[#081326] border-slate-700/80 text-slate-200'
+                              ? 'bg-[#064E3B]/55 border-[#34D399] text-white ring-1 ring-[#34D399]/40'
+                              : 'glass-panel-deep text-slate-200'
                           }`}
                         >
                           <button
@@ -537,10 +556,10 @@ const ContentManagerBody: React.FC = () => {
                               setSelectedCorrectIndex(idx);
                               if (options[idx]) setAnswer(options[idx]);
                             }}
-                            className={`w-7 h-7 rounded-lg font-['Outfit'] font-black text-xs flex items-center justify-center shrink-0 cursor-pointer transition-transform hover:scale-105 ${
+                            className={`w-7 h-7 rounded-lg font-['Chakra_Petch'] font-black text-xs flex items-center justify-center shrink-0 cursor-pointer transition-transform hover:scale-105 ${
                               isCorrect
-                                ? 'bg-[#10B981] text-slate-950 shadow-sm'
-                                : 'bg-slate-700 text-slate-300 hover:bg-amber-400 hover:text-slate-950'
+                                ? 'bg-[#34D399] text-slate-950 shadow-sm'
+                                : 'bg-[#0C3554] text-slate-200 hover:bg-[#4DB8FF] hover:text-slate-950'
                             }`}
                           >
                             {letter}
@@ -567,7 +586,7 @@ const ContentManagerBody: React.FC = () => {
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-emerald-400 mb-1">
+                <label className="block text-xs font-semibold text-[#34D399] mb-1">
                   Official Answer (Private to Host until Revealed) *
                 </label>
                 <input
@@ -580,14 +599,14 @@ const ContentManagerBody: React.FC = () => {
                       ? 'Selected option text (e.g., 91 Goals)'
                       : 'Enter the official answer...'
                   }
-                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl bg-[#030914] border border-emerald-500/50 text-sm text-emerald-300 font-semibold focus:outline-none focus:border-emerald-400"
+                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl glass-panel-deep border-[#34D399]/50 text-sm text-[#34D399] font-semibold focus:outline-none focus:border-[#34D399]"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-[#F59E0B] hover:bg-amber-400 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
+                className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-[#4DB8FF] hover:bg-[#7DD3FC] text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap shadow-[0_0_24px_rgba(77,184,255,0.28)]"
               >
                 <Plus className="w-4 h-4" />
                 <span>{saving ? 'Saving Item...' : `Save to ${currentTabConfig.label}`}</span>
@@ -596,13 +615,13 @@ const ContentManagerBody: React.FC = () => {
           </section>
 
           {/* RIGHT: Saved Category Items List with Edit, Delete & Preview */}
-          <section className="lg:col-span-7 bg-[#081326] border border-slate-800 rounded-2xl p-6 space-y-4">
+          <section className="lg:col-span-7 glass-panel glass-noise rounded-2xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold font-['Outfit'] text-white">
+                <h2 className="text-lg font-bold font-['Unbounded'] text-white">
                   Saved {currentTabConfig.label} Bank ({filteredItems.length})
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-300 mt-0.5">
                   Snapshot Isolation Active: Editing or deleting items here never breaks an active
                   live round
                 </p>
@@ -617,52 +636,52 @@ const ContentManagerBody: React.FC = () => {
                 return (
                   <div
                     key={item.id}
-                    className="p-4 rounded-xl bg-[#030914] border border-slate-800 flex flex-col gap-3"
+                    className="p-4 rounded-xl glass-panel-deep flex flex-col gap-3"
                   >
                     {isEditing ? (
                       <div className="space-y-3">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-[11px] text-slate-400 mb-1">Title</label>
+                            <label className="block text-[11px] text-slate-300 mb-1">Title</label>
                             <input
                               type="text"
                               value={editTitle}
                               onChange={(e) => setEditTitle(e.target.value)}
-                              className="w-full min-h-[44px] px-3 py-2 rounded-lg bg-[#081326] border border-slate-700 text-xs text-white"
+                              className="w-full min-h-[44px] px-3 py-2 rounded-lg glass-panel-deep text-xs text-white focus:outline-none focus:border-[#4DB8FF]"
                             />
                           </div>
                           <div>
-                            <label className="block text-[11px] text-emerald-400 mb-1">
+                            <label className="block text-[11px] text-[#34D399] mb-1">
                               Official Answer
                             </label>
                             <input
                               type="text"
                               value={editAnswer}
                               onChange={(e) => setEditAnswer(e.target.value)}
-                              className="w-full min-h-[44px] px-3 py-2 rounded-lg bg-[#081326] border border-emerald-500/50 text-xs text-emerald-300 font-bold"
+                              className="w-full min-h-[44px] px-3 py-2 rounded-lg glass-panel-deep border-[#34D399]/50 text-xs text-[#34D399] font-bold focus:outline-none focus:border-[#34D399]"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-[11px] text-slate-400 mb-1">
+                          <label className="block text-[11px] text-slate-300 mb-1">
                             Prompt / Question Text
                           </label>
                           <input
                             type="text"
                             value={editPrompt}
                             onChange={(e) => setEditPrompt(e.target.value)}
-                            className="w-full min-h-[44px] px-3 py-2 rounded-lg bg-[#081326] border border-slate-700 text-xs text-white"
+                            className="w-full min-h-[44px] px-3 py-2 rounded-lg glass-panel-deep text-xs text-white focus:outline-none focus:border-[#4DB8FF]"
                           />
                         </div>
 
                         {isMultipleChoiceTab && (
-                          <div className="p-3 rounded-xl bg-[#081326] border border-slate-700/80 space-y-2.5">
+                          <div className="p-3 rounded-xl glass-panel-deep space-y-2.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-amber-400">
+                              <span className="text-xs font-bold text-[#4DB8FF]">
                                 Multiple Choice Options (A, B, C, D)
                               </span>
-                              <span className="text-[11px] text-emerald-400 font-semibold">
+                              <span className="text-[11px] text-[#34D399] font-semibold">
                                 Click letter to mark correct
                               </span>
                             </div>
@@ -675,8 +694,8 @@ const ContentManagerBody: React.FC = () => {
                                     key={letter}
                                     className={`flex items-center gap-2 p-1.5 rounded-lg border transition-colors ${
                                       isCorrect
-                                        ? 'bg-emerald-950/60 border-emerald-500 text-white ring-1 ring-emerald-500/50'
-                                        : 'bg-[#030914] border-slate-800 text-slate-200'
+                                        ? 'bg-[#064E3B]/55 border-[#34D399] text-white ring-1 ring-[#34D399]/40'
+                                        : 'glass-panel-deep text-slate-200'
                                     }`}
                                   >
                                     <button
@@ -686,10 +705,10 @@ const ContentManagerBody: React.FC = () => {
                                         setEditCorrectIndex(idx);
                                         if (editOptions[idx]) setEditAnswer(editOptions[idx]);
                                       }}
-                                      className={`w-7 h-7 rounded font-['Outfit'] font-black text-xs flex items-center justify-center shrink-0 cursor-pointer ${
+                                      className={`w-7 h-7 rounded font-['Chakra_Petch'] font-black text-xs flex items-center justify-center shrink-0 cursor-pointer ${
                                         isCorrect
-                                          ? 'bg-[#10B981] text-slate-950 shadow-sm'
-                                          : 'bg-slate-700 text-slate-300 hover:bg-amber-400 hover:text-slate-950'
+                                          ? 'bg-[#34D399] text-slate-950 shadow-sm'
+                                          : 'bg-[#0C3554] text-slate-200 hover:bg-[#4DB8FF] hover:text-slate-950'
                                       }`}
                                     >
                                       {letter}
@@ -723,9 +742,9 @@ const ContentManagerBody: React.FC = () => {
                                 value={editMediaUrl}
                                 onChange={(e) => setEditMediaUrl(e.target.value)}
                                 placeholder="Media URL"
-                                className="flex-1 min-h-[44px] px-3 py-2 rounded-lg bg-[#081326] border border-slate-700 text-xs text-slate-300"
+                                className="flex-1 min-h-[44px] px-3 py-2 rounded-lg glass-panel-deep text-xs text-slate-200 focus:outline-none focus:border-[#4DB8FF]"
                               />
-                              <label className="min-h-[44px] px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-amber-300 flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
+                              <label className="min-h-[44px] px-3 py-2 rounded-lg glass-panel-deep hover:border-[#4DB8FF]/60 text-xs font-semibold text-[#7DD3FC] flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
                                 <Upload className="w-3.5 h-3.5" />
                                 <span>Replace File</span>
                                 <input
@@ -745,15 +764,15 @@ const ContentManagerBody: React.FC = () => {
                             </div>
 
                             {currentTabConfig.mediaType === 'image' && (
-                              <div className="p-3 rounded-xl bg-[#081326] border border-slate-700 space-y-2">
+                              <div className="p-3 rounded-xl glass-panel-deep space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-bold text-amber-400">
+                                  <span className="text-xs font-bold text-[#4DB8FF]">
                                     Mystery Blur Intensity: {editBlurAmount}px
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => setEditPreviewBlurred((p) => !p)}
-                                    className="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-[11px] font-semibold text-sky-300 cursor-pointer"
+                                    className="px-2.5 py-1 rounded glass-panel-deep hover:border-[#4DB8FF]/60 text-[11px] font-semibold text-[#7DD3FC] cursor-pointer"
                                   >
                                     {editPreviewBlurred ? 'Test Unblurred' : 'Test Blurred'}
                                   </button>
@@ -765,10 +784,10 @@ const ContentManagerBody: React.FC = () => {
                                   step={2}
                                   value={editBlurAmount}
                                   onChange={(e) => setEditBlurAmount(Number(e.target.value))}
-                                  className="w-full accent-[#F59E0B] cursor-pointer"
+                                  className="w-full accent-[#4DB8FF] cursor-pointer"
                                 />
                                 {editMediaUrl && (
-                                  <div className="relative h-32 rounded-lg bg-[#030914] border border-slate-800 flex items-center justify-center overflow-hidden p-2">
+                                  <div className="relative h-32 rounded-lg glass-panel-deep flex items-center justify-center overflow-hidden p-2">
                                     <img
                                       src={editMediaUrl}
                                       alt="Edit blur preview"
@@ -789,7 +808,7 @@ const ContentManagerBody: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleSaveEdit(item.id)}
-                            className="min-h-[44px] px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                            className="min-h-[44px] px-4 py-2 rounded-lg bg-[#34D399] hover:bg-emerald-400 text-slate-950 font-extrabold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                           >
                             <Check className="w-4 h-4" />
                             Save Changes
@@ -797,7 +816,7 @@ const ContentManagerBody: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setEditingId(null)}
-                            className="min-h-[44px] px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                            className="min-h-[44px] px-4 py-2 rounded-lg glass-panel-deep hover:border-[#4DB8FF]/60 text-slate-200 font-semibold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                           >
                             <X className="w-4 h-4" />
                             Cancel
@@ -809,7 +828,7 @@ const ContentManagerBody: React.FC = () => {
                         <div className="flex items-start gap-4 flex-1 min-w-0">
                           {/* Instant Thumbnail or Audio Icon */}
                           {currentTabConfig.mediaType === 'image' && (
-                            <div className="w-20 h-20 rounded-xl bg-[#081326] border border-slate-800 overflow-hidden flex items-center justify-center shrink-0">
+                            <div className="w-20 h-20 rounded-xl glass-panel-deep overflow-hidden flex items-center justify-center shrink-0">
                               {item.mediaUrl ? (
                                 <img
                                   src={item.mediaUrl}
@@ -818,28 +837,28 @@ const ContentManagerBody: React.FC = () => {
                                   className="w-full h-full object-contain"
                                 />
                               ) : (
-                                <ImageIcon className="w-6 h-6 text-slate-600" />
+                                <ImageIcon className="w-6 h-6 text-[#4DB8FF]/50" />
                               )}
                             </div>
                           )}
 
                           {currentTabConfig.mediaType === 'audio' && (
-                            <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shrink-0">
+                            <div className="w-12 h-12 rounded-xl bg-[#4DB8FF]/15 border border-[#4DB8FF]/35 flex items-center justify-center text-[#4DB8FF] shrink-0">
                               <Volume2 className="w-6 h-6" />
                             </div>
                           )}
 
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-sm font-bold font-['Outfit'] text-white">
+                            <h3 className="text-sm font-bold font-['Unbounded'] text-white">
                               {item.title}
                             </h3>
                             <p className="text-xs text-slate-300 mt-0.5">{item.prompt}</p>
                             <div className="flex items-center gap-2 flex-wrap mt-1">
-                              <p className="text-xs font-bold text-emerald-400">
+                              <p className="text-xs font-bold text-[#34D399]">
                                 Answer: {item.answer}
                               </p>
                               {currentTabConfig.mediaType === 'image' && (
-                                <span className="text-[11px] font-['JetBrains_Mono'] font-semibold px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                                <span className="text-[11px] font-['JetBrains_Mono'] font-semibold px-2 py-0.5 rounded bg-[#4DB8FF]/15 border border-[#4DB8FF]/35 text-[#7DD3FC]">
                                   Blur: {item.blurAmount ?? 28}px
                                 </span>
                               )}
@@ -855,17 +874,17 @@ const ContentManagerBody: React.FC = () => {
                                   return (
                                     <div
                                       key={i}
-                                      className={`px-2 py-1 rounded-lg text-xs font-['Outfit'] flex items-center gap-1.5 border transition-all ${
+                                      className={`px-2 py-1 rounded-lg text-xs font-['Chakra_Petch'] flex items-center gap-1.5 border transition-all ${
                                         isCorrect
-                                          ? 'bg-emerald-950/70 border-emerald-500 text-emerald-200 font-bold shadow-sm ring-1 ring-emerald-500/30'
-                                          : 'bg-[#081326] border-slate-800 text-slate-400'
+                                          ? 'bg-[#064E3B]/65 border-[#34D399] text-emerald-200 font-bold shadow-sm ring-1 ring-[#34D399]/30'
+                                          : 'glass-panel-deep text-slate-300'
                                       }`}
                                     >
                                       <span
                                         className={`w-4 h-4 rounded text-[10px] font-black flex items-center justify-center shrink-0 ${
                                           isCorrect
-                                            ? 'bg-[#10B981] text-slate-950'
-                                            : 'bg-slate-700 text-slate-300'
+                                            ? 'bg-[#34D399] text-slate-950'
+                                            : 'bg-[#0C3554] text-slate-200'
                                         }`}
                                       >
                                         {letter}
@@ -878,8 +897,8 @@ const ContentManagerBody: React.FC = () => {
                             )}
 
                             {currentTabConfig.mediaType === 'image' && (
-                              <div className="mt-2 flex flex-wrap items-center gap-2 bg-[#081326] border border-slate-800 rounded-lg px-2.5 py-1.5 max-w-md">
-                                <span className="text-[11px] font-semibold text-amber-300 whitespace-nowrap">
+                              <div className="mt-2 flex flex-wrap items-center gap-2 glass-panel-deep rounded-lg px-2.5 py-1.5 max-w-md">
+                                <span className="text-[11px] font-semibold text-[#7DD3FC] whitespace-nowrap">
                                   Blur Control:
                                 </span>
                                 <input
@@ -893,9 +912,9 @@ const ContentManagerBody: React.FC = () => {
                                       blurAmount: Number(e.target.value),
                                     })
                                   }
-                                  className="flex-1 min-w-[100px] accent-[#F59E0B] cursor-pointer"
+                                  className="flex-1 min-w-[100px] accent-[#4DB8FF] cursor-pointer"
                                 />
-                                <span className="font-['JetBrains_Mono'] text-[11px] font-bold text-amber-400 tabular-nums w-9 text-right">
+                                <span className="font-['JetBrains_Mono'] text-[11px] font-bold text-[#4DB8FF] tabular-nums w-9 text-right">
                                   {item.blurAmount ?? 28}px
                                 </span>
                               </div>
@@ -915,16 +934,16 @@ const ContentManagerBody: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => startEditing(item)}
-                            className="min-h-[44px] min-w-[44px] px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                            className="min-h-[44px] min-w-[44px] px-3 py-2 rounded-lg glass-panel-deep hover:border-[#4DB8FF]/60 text-xs font-semibold text-slate-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                           >
-                            <Edit3 className="w-3.5 h-3.5" />
+                            <Edit3 className="w-3.5 h-3.5 text-[#4DB8FF]" />
                             <span>Edit</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => setConfirmDeleteId(item.id)}
-                            className="min-h-[44px] min-w-[44px] px-3 py-2 rounded-lg bg-red-950/50 hover:bg-red-900/60 border border-red-500/30 text-xs font-semibold text-red-300 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                            className="min-h-[44px] min-w-[44px] px-3 py-2 rounded-lg bg-[#FB6F84]/15 hover:bg-[#FB6F84]/25 border border-[#FB6F84]/40 text-xs font-semibold text-rose-200 flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             <span>Delete</span>
@@ -935,22 +954,22 @@ const ContentManagerBody: React.FC = () => {
 
                     {/* Inline Confirmation Step Before Deletion */}
                     {isConfirmingDelete && (
-                      <div className="p-3 rounded-lg bg-red-950/80 border border-red-500/50 flex items-center justify-between gap-3">
-                        <span className="text-xs text-red-200 font-medium">
+                      <div className="p-3 rounded-lg bg-[#3B1324]/85 backdrop-blur-md border border-[#FB6F84]/60 flex items-center justify-between gap-3">
+                        <span className="text-xs text-rose-100 font-medium">
                           Delete “{item.title}” from the content bank?
                         </span>
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => handleDeleteItem(item.id)}
-                            className="min-h-[44px] px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-400 text-white text-xs font-bold cursor-pointer whitespace-nowrap"
+                            className="min-h-[44px] px-3 py-1.5 rounded-lg bg-[#FB6F84] hover:bg-rose-400 text-slate-950 text-xs font-extrabold cursor-pointer whitespace-nowrap"
                           >
                             Confirm Delete
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfirmDeleteId(null)}
-                            className="min-h-[44px] px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold cursor-pointer whitespace-nowrap"
+                            className="min-h-[44px] px-3 py-1.5 rounded-lg glass-panel-deep text-slate-200 text-xs font-semibold cursor-pointer whitespace-nowrap"
                           >
                             Cancel
                           </button>

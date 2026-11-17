@@ -1,16 +1,24 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { EmojiId, MiniGameCategory } from '../types/game';
+import { getBzzoiroClubLogoById } from '../data/bzzoiroSports';
 
-export const EmojiBadgeArtwork: React.FC<{ emojiId: EmojiId; className?: string }> = ({
-  emojiId,
-  className = 'w-24 h-24',
-}) => {
+export const EmojiBadgeArtwork: React.FC<{
+  emojiId: EmojiId;
+  scale?: number;
+  className?: string;
+}> = ({ emojiId, scale = 1, className = 'w-24 h-24' }) => {
   const isAngry = emojiId === 'angry';
   const gradId = `sphere-${emojiId}`;
   const rimId = `rim-${emojiId}`;
 
   return (
-    <svg viewBox="0 0 120 120" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      viewBox="0 0 120 120"
+      className={`${className} transition-transform duration-200`}
+      style={scale !== 1 ? { transform: `scale(${scale})` } : undefined}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <defs>
         <radialGradient id={gradId} cx="38%" cy="30%" r="68%">
           {isAngry ? (
@@ -242,11 +250,29 @@ export const EmojiBadgeArtwork: React.FC<{ emojiId: EmojiId; className?: string 
 
 export const CategoryBadgeArtwork: React.FC<{
   category: MiniGameCategory;
+  customIconUrl?: string;
+  scale?: number;
   className?: string;
-}> = ({ category, className = 'w-24 h-24' }) => {
+}> = ({ category, customIconUrl, scale = 1, className = 'w-24 h-24' }) => {
+  if (customIconUrl) {
+    return (
+      <img
+        src={customIconUrl}
+        alt={`${category} icon`}
+        className={`${className} object-contain transition-transform duration-200`}
+        style={scale !== 1 ? { transform: `scale(${scale})` } : undefined}
+      />
+    );
+  }
   const bgId = `cat-bg-${category}`;
   return (
-    <svg viewBox="0 0 120 120" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      viewBox="0 0 120 120"
+      className={`${className} transition-transform duration-200`}
+      style={scale !== 1 ? { transform: `scale(${scale})` } : undefined}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <defs>
         <linearGradient id={bgId} x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#0284C7" />
@@ -450,10 +476,36 @@ export const CategoryBadgeArtwork: React.FC<{
   );
 };
 
-export const ClubCrestArtwork: React.FC<{ clubId: string; className?: string }> = ({
+export const ClubCrestArtwork: React.FC<{
+  clubId: string;
+  logoUrl?: string;
+  alt?: string;
+  className?: string;
+}> = ({
   clubId,
+  logoUrl,
+  alt,
   className = 'w-12 h-12',
 }) => {
+  const resolvedLogoUrl = logoUrl || getBzzoiroClubLogoById(clubId);
+  const [imgFailed, setImgFailed] = useState(false);
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [clubId, resolvedLogoUrl]);
+
+  if (resolvedLogoUrl && !imgFailed) {
+    return (
+      <img
+        src={resolvedLogoUrl}
+        alt={alt || clubId}
+        referrerPolicy="no-referrer"
+        onError={() => setImgFailed(true)}
+        className={`${className} object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]`}
+      />
+    );
+  }
+
   switch (clubId) {
     case 'real_madrid':
       return (

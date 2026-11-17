@@ -14,12 +14,13 @@ import {
   GameSessionState,
   MINI_GAME_CATEGORIES,
   MiniGameCategory,
+  StudioCustomization,
   TeamId,
   TicTacToeClub,
   TicTacToeNation,
   TicTacToeState,
 } from './src/types/game.ts';
-import { resolveBzzoiroPlayerImageUrl } from './src/data/bzzoiroSports.ts';
+import { BZZOIRO_CLUB_POOL, resolveBzzoiroPlayerImageUrl } from './src/data/bzzoiroSports.ts';
 
 dotenv.config();
 
@@ -119,18 +120,7 @@ generateSampleWavFile(path.join(SAMPLES_DIR, 'ucl_fanfare.wav'), [
 ]);
 
 // Football Tic-Tac-Toe Club Pool & Club-vs-Club Intersection Player Hints
-const CLUB_POOL: TicTacToeClub[] = [
-  { id: 'real_madrid', name: 'Real Madrid', shortName: 'RMA' },
-  { id: 'barcelona', name: 'FC Barcelona', shortName: 'BAR' },
-  { id: 'man_city', name: 'Manchester City', shortName: 'MCI' },
-  { id: 'psg', name: 'Paris Saint-Germain', shortName: 'PSG' },
-  { id: 'chelsea', name: 'Chelsea FC', shortName: 'CHE' },
-  { id: 'ac_milan', name: 'AC Milan', shortName: 'MIL' },
-  { id: 'man_united', name: 'Manchester United', shortName: 'MUN' },
-  { id: 'juventus', name: 'Juventus FC', shortName: 'JUV' },
-  { id: 'bayern', name: 'Bayern Munich', shortName: 'BAY' },
-  { id: 'inter_milan', name: 'Inter Milan', shortName: 'INT' },
-];
+const CLUB_POOL: TicTacToeClub[] = BZZOIRO_CLUB_POOL;
 
 const CLUB_IDS = new Set(CLUB_POOL.map((c) => c.id));
 
@@ -204,6 +194,8 @@ function createFreshTicTacToeState(startingTeam: TeamId = 'red'): TicTacToeState
     id: c.id,
     name: c.name,
     code: c.shortName,
+    bzzoiroTeamId: c.bzzoiroTeamId,
+    logoUrl: c.logoUrl,
   }));
   const cells = [];
   const hintsByCell: Record<number, string[]> = {};
@@ -238,14 +230,15 @@ function createFreshTicTacToeState(startingTeam: TeamId = 'red'): TicTacToeState
   };
 }
 
-function createShuffledCards(): BoardCard[] {
+function createShuffledCards(customization?: StudioCustomization): BoardCard[] {
   const shuffledCategories = shuffleArray(MINI_GAME_CATEGORIES);
   return FIXED_EMOJI_COVERS.map((emojiCover, idx) => {
     const cat = shuffledCategories[idx];
+    const customLabel = customization?.cardSlots?.[emojiCover.cardNumber]?.emojiLabel?.trim();
     return {
       cardNumber: emojiCover.cardNumber,
       emojiId: emojiCover.emojiId,
-      emojiLabel: emojiCover.emojiLabel,
+      emojiLabel: customLabel || emojiCover.emojiLabel,
       category: cat.category,
       categoryTitle: cat.title,
       revealed: false,
@@ -480,7 +473,7 @@ function loadDatabase(): PersistentDatabase {
       activeTeam: 'red',
       lastScorePulse: null,
       selectedCardNumber: 1,
-      stage: 'board',
+      stage: 'home',
       boardDeckId: 1,
       cards: createShuffledCards(),
       activeMiniGame: null,
@@ -801,13 +794,20 @@ async function startServer() {
         break;
       }
 
+      case 'stage:showHome': {
+        session.stage = 'home';
+        session.activeMiniGame = null;
+        break;
+      }
+
+      case 'stage:revealBoard': {
+        session.stage = 'board';
+        session.activeMiniGame = null;
+        session.boardDeckId = (session.boardDeckId || 1) + 1;
+        break;
+      }
+
       case 'card:select': {
-        const revealedCard = session.cards.find((c) => c.revealed);
-        if (revealedCard) {
-          // Lock selection to the already-picked card until Reset Covers, Shuffle Sports, or Back to Board
-          session.selectedCardNumber = revealedCard.cardNumber;
-          break;
-        }
         const cardNum = Number(payload.cardNumber);
         if (cardNum >= 1 && cardNum <= 8) {
           session.selectedCardNumber = cardNum;
@@ -816,40 +816,44 @@ async function startServer() {
       }
 
       case 'card:reveal': {
-        const revealedCard = session.cards.find((c) => c.revealed);
-        if (revealedCard) {
-          // Only one emoji icon can be picked/revealed at a time
-          session.selectedCardNumber = revealedCard.cardNumber;
-          break;
+        if (session.stage === 'home') {
+          session.stage = 'board';
+          session.boardDeckId = (session.boardDeckId || 1) + 1;
         }
         const cardNum = Number(payload.cardNumber) || session.selectedCardNumber;
         const card = session.cards.find((c) => c.cardNumber === cardNum);
         if (card) {
           session.selectedCardNumber = cardNum;
           card.revealed = true;
-          // Must NOT automatically open the mini game
         }
         break;
       }
 
       case 'card:openMiniGame': {
-        const revealedCard = session.cards.find((c) => c.revealed);
-        const cardNum = revealedCard
-          ? revealedCard.cardNumber
-          : Number(payload.cardNumber) || session.selectedCardNumber;
-        const card = session.cards.find((c) => c.cardNumber === cardNum);
-        if (!card) break;
-        session.selectedCardNumber = card.cardNumber;
-        card.revealed = true;
+        const requestedCategory = payload.category as MiniGameCategory | undefined;
+        const cardNum = Number(payload.cardNumber) || session.selectedCardNumber;
+        const card =
+          (payload.cardNumber ? session.cards.find((c) => c.cardNumber === Number(payload.cardNumber)) : undefined) ||
+          (requestedCategory ? session.cards.find((c) => c.category === requestedCategory) : undefined) ||
+          session.cards.find((c) => c.cardNumber === cardNum);
+        const targetCategory = requestedCategory || card?.category;
+        if (!targetCategory) break;
+        const targetCardNumber = card?.cardNumber ?? cardNum;
+        const targetTitle =
+          card?.categoryTitle ||
+          MINI_GAME_CATEGORIES.find((m) => m.category === targetCategory)?.title ||
+          targetCategory;
+        session.selectedCardNumber = targetCardNumber;
+        if (card) card.revealed = true;
         session.stage = 'minigame';
 
-        if (card.category === 'tictactoe') {
+        if (targetCategory === 'tictactoe') {
           // Ensure fresh or active TicTacToe state
           cachedTicTacToe = createFreshTicTacToeState(session.activeTeam);
           session.activeMiniGame = {
-            cardNumber: card.cardNumber,
-            category: card.category,
-            categoryTitle: card.categoryTitle,
+            cardNumber: targetCardNumber,
+            category: targetCategory,
+            categoryTitle: targetTitle,
             snapshot: null,
             timerSeconds: 30,
             timerRunning: false,
@@ -857,17 +861,17 @@ async function startServer() {
             imageUnblurred: false,
             audioPlaying: false,
             audioCommandTimestamp: Date.now(),
-            scored: card.scored,
-            scoreResult: card.scoreResult,
-            awardedTeam: card.awardedTeam || null,
+            scored: card?.scored ?? false,
+            scoreResult: card?.scoreResult ?? 'pending',
+            awardedTeam: card?.awardedTeam || null,
             ticTacToe: cachedTicTacToe,
           };
         } else {
-          const snapshot = createSnapshotForCategory(card.category, payload.itemId);
+          const snapshot = createSnapshotForCategory(targetCategory, payload.itemId);
           session.activeMiniGame = {
-            cardNumber: card.cardNumber,
-            category: card.category,
-            categoryTitle: card.categoryTitle,
+            cardNumber: targetCardNumber,
+            category: targetCategory,
+            categoryTitle: targetTitle,
             snapshot,
             timerSeconds: 30, // Idle at 00:30, never auto-starts on open
             timerRunning: false,
@@ -875,9 +879,9 @@ async function startServer() {
             imageUnblurred: false,
             audioPlaying: false,
             audioCommandTimestamp: Date.now(),
-            scored: card.scored,
-            scoreResult: card.scoreResult,
-            awardedTeam: card.awardedTeam || null,
+            scored: card?.scored ?? false,
+            scoreResult: card?.scoreResult ?? 'pending',
+            awardedTeam: card?.awardedTeam || null,
           };
         }
         break;
@@ -898,23 +902,89 @@ async function startServer() {
         session.stage = 'board';
         session.activeMiniGame = null;
         session.boardDeckId = (session.boardDeckId || 1) + 1;
-        session.cards = createShuffledCards();
+        session.cards = createShuffledCards(session.customization);
         cachedTicTacToe = createFreshTicTacToeState(session.activeTeam);
         break;
       }
 
       case 'board:newGame': {
-        // Reset Red and Blue scores to 0, reset timers, and shuffle a brand-new board
+        // Reset Red and Blue scores to 0, reset timers, shuffle a brand-new board, and show Home Screen for Host reveal
         session.redScore = 0;
         session.blueScore = 0;
         session.activeTeam = 'red';
         session.lastScorePulse = null;
         session.selectedCardNumber = 1;
-        session.stage = 'board';
+        session.stage = 'home';
         session.activeMiniGame = null;
         session.boardDeckId = (session.boardDeckId || 1) + 1;
-        session.cards = createShuffledCards();
+        session.cards = createShuffledCards(session.customization);
         cachedTicTacToe = createFreshTicTacToeState('red');
+        break;
+      }
+
+      case 'customization:update': {
+        const incoming = (payload.customization || {}) as StudioCustomization;
+        const prev = session.customization || {};
+        const mergedSlots: Record<number, any> = { ...(prev.cardSlots || {}) };
+        if (incoming.cardSlots) {
+          for (const [k, v] of Object.entries(incoming.cardSlots)) {
+            const num = Number(k);
+            if (num >= 1 && num <= 8) {
+              mergedSlots[num] = {
+                ...(mergedSlots[num] || {}),
+                ...(v || {}),
+              };
+            }
+          }
+        }
+        const mergedMiniGameIcons: Partial<Record<MiniGameCategory, string>> = {
+          ...(prev.miniGameIcons || {}),
+        };
+        if (incoming.miniGameIcons) {
+          for (const [k, v] of Object.entries(incoming.miniGameIcons)) {
+            if (typeof v === 'string') {
+              if (v.trim()) {
+                mergedMiniGameIcons[k as MiniGameCategory] = v.trim();
+              } else {
+                delete mergedMiniGameIcons[k as MiniGameCategory];
+              }
+            }
+          }
+        }
+        const mergedMiniGameIconScales: Partial<Record<MiniGameCategory, number>> = {
+          ...(prev.miniGameIconScales || {}),
+        };
+        if (incoming.miniGameIconScales) {
+          for (const [k, v] of Object.entries(incoming.miniGameIconScales)) {
+            if (v === null || v === undefined || Number(v) <= 0) {
+              delete mergedMiniGameIconScales[k as MiniGameCategory];
+            } else if (Number.isFinite(Number(v))) {
+              mergedMiniGameIconScales[k as MiniGameCategory] =
+                Math.round(Math.min(1.8, Math.max(0.5, Number(v))) * 100) / 100;
+            }
+          }
+        }
+        session.customization = {
+          ...prev,
+          ...incoming,
+          cardSlots: mergedSlots,
+          miniGameIcons: mergedMiniGameIcons,
+          miniGameIconScales: mergedMiniGameIconScales,
+        };
+        for (const c of session.cards) {
+          const defCover = FIXED_EMOJI_COVERS.find((f) => f.cardNumber === c.cardNumber);
+          const customLabel = session.customization?.cardSlots?.[c.cardNumber]?.emojiLabel?.trim();
+          c.emojiLabel = customLabel || defCover?.emojiLabel || c.emojiLabel;
+        }
+        break;
+      }
+
+      case 'customization:reset': {
+        session.customization = undefined;
+        for (const c of session.cards) {
+          const defCover = FIXED_EMOJI_COVERS.find((f) => f.cardNumber === c.cardNumber);
+          if (defCover) c.emojiLabel = defCover.emojiLabel;
+        }
         break;
       }
 
@@ -1051,10 +1121,9 @@ async function startServer() {
         if (mg?.audioPlaying) {
           broadcastAudioEvent('stop');
         }
-        // Reset covers and shuffle the 8 hidden sports categories whenever returning to board from any mini-game
-        session.boardDeckId = (session.boardDeckId || 1) + 1;
-        session.cards = createShuffledCards();
-        cachedTicTacToe = createFreshTicTacToeState(session.activeTeam);
+        for (const card of session.cards) {
+          card.revealed = false;
+        }
         session.stage = 'board';
         session.activeMiniGame = null;
         break;
