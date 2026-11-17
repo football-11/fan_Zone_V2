@@ -20,6 +20,8 @@ import {
   syncContentItemToFirestore,
   syncGameSessionToFirestore,
   subscribeToGameSession,
+  syncStudioCustomizationToFirestore,
+  subscribeToStudioCustomization,
 } from '../firebase';
 import { BZZOIRO_CLUB_POOL, resolveBzzoiroPlayerImageUrl } from '../data/bzzoiroSports';
 
@@ -34,6 +36,8 @@ interface GameSyncContextValue {
   state: GameSessionState | null;
   contentItems: ContentItem[];
   connected: boolean;
+  syncError: string | null;
+  syncQuotaExceeded: boolean;
   ownerAuth: OwnerAuthState;
   authError: string | null;
   loginWithPasscode: (passcode: string) => Promise<boolean>;
@@ -309,8 +313,23 @@ function createDefaultSessionState(): GameSessionState {
     boardDeckId: 1,
     cards: createFallbackCards(),
     activeMiniGame: null,
+    revision: 0,
     updatedAt: 0,
   };
+}
+
+function isIncomingStateNewer(
+  incoming: GameSessionState | null | undefined,
+  current: GameSessionState | null | undefined
+): boolean {
+  if (!incoming || !Array.isArray(incoming.cards)) return false;
+  if (!current) return true;
+  const currentRev = Number(current.revision || 0);
+  const incomingRev = Number(incoming.revision || 0);
+  const currentUpdated = Number(current.updatedAt || 0);
+  const incomingUpdated = Number(incoming.updatedAt || 0);
+  if (incomingRev !== currentRev) return incomingRev > currentRev;
+  return incomingUpdated > currentUpdated;
 }
 
 const GameSyncContext = createContext<GameSyncContextValue | undefined>(undefined);
@@ -365,8 +384,12 @@ export const GameSyncProvider: React.FC<{
     return DEFAULT_FALLBACK_ITEMS;
   });
 
-  const [connected, setConnected] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [firestoreLive, setFirestoreLive] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncQuotaExceeded, setSyncQuotaExceeded] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const connected = wsConnected || (firestoreLive && !syncQuotaExceeded);
 
   const [ownerAuth, setOwnerAuth] = useState<OwnerAuthState>(() => {
     try {
@@ -396,12 +419,17 @@ export const GameSyncProvider: React.FC<{
   const channelRef = useRef<BroadcastChannel | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const stateRef = useRef<GameSessionState | null>(state);
+  const customizationRef = useRef<StudioCustomization | undefined>(state?.customization);
   const contentItemsRef = useRef<ContentItem[]>(contentItems);
   const inFlightPollRef = useRef(false);
   const lastLocalSyncAtRef = useRef(0);
+  const lastAudioCmdTimestampRef = useRef(0);
 
   useEffect(() => {
     stateRef.current = state;
+    if (state?.customization && !customizationRef.current) {
+      customizationRef.current = state.customization;
+    }
   }, [state]);
 
   useEffect(() => {
@@ -434,8 +462,38 @@ export const GameSyncProvider: React.FC<{
     }
   }, []);
 
+  const handleFirestoreSyncOutcome = useCallback(
+    (res: { ok: boolean; code?: string; message?: string }) => {
+      if (res.ok) {
+        setFirestoreLive(true);
+        setSyncQuotaExceeded(false);
+        setSyncError(null);
+      } else {
+        const msg = res.message || '';
+        const isQuota =
+          res.code === 'resource-exhausted' ||
+          msg.includes('Quota limit exceeded') ||
+          msg.includes('Quota exceeded');
+        if (isQuota) {
+          setSyncQuotaExceeded(true);
+          setSyncError(
+            'Firestore free daily write quota exceeded. Cross-device Studio updates are paused until quota resets tomorrow or the database is upgraded.'
+          );
+        } else if (msg) {
+          setSyncError(`Cloud sync error: ${msg}`);
+        }
+      }
+    },
+    []
+  );
+
   const broadcastLocalSync = useCallback(
-    (nextState: GameSessionState, nextItems?: ContentItem[], audioCmd?: { action: 'play' | 'stop'; mediaUrl?: string }) => {
+    (
+      nextState: GameSessionState,
+      nextItems?: ContentItem[],
+      audioCmd?: { action: 'play' | 'stop'; mediaUrl?: string },
+      options?: { syncCustomization?: boolean }
+    ) => {
       try {
         localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(nextState));
         if (nextItems) {
@@ -458,36 +516,123 @@ export const GameSyncProvider: React.FC<{
       }
       // Direct Firestore Cloud Sync so iPad host updates PC studio display instantly on Vercel
       if (role === 'host') {
-        syncGameSessionToFirestore(nextState).catch(() => {});
+        syncGameSessionToFirestore(nextState)
+          .then(handleFirestoreSyncOutcome)
+          .catch(() => {});
+        if (options?.syncCustomization) {
+          syncStudioCustomizationToFirestore(nextState.customization || null)
+            .then(handleFirestoreSyncOutcome)
+            .catch(() => {});
+        }
       }
     },
-    [role]
+    [role, handleFirestoreSyncOutcome]
   );
 
-  // Firestore Real-Time Cloud Listener for Cross-Device Vercel Sync (iPad <-> PC)
+  // Firestore Real-Time Cloud Listener for Static Studio Customization
   useEffect(() => {
-    const unsub = subscribeToGameSession('fanzone-live-session', (incoming) => {
-      if (!incoming || !Array.isArray(incoming.cards)) return;
-      const currentRev = Number(stateRef.current?.revision || 0);
-      const incomingRev = Number(incoming.revision || 0);
-      const currentUpdated = Number(stateRef.current?.updatedAt || 0);
-      const incomingUpdated = Number(incoming.updatedAt || 0);
-
-      if (incomingRev > currentRev || (incomingRev === currentRev && incomingUpdated > currentUpdated)) {
-        stateRef.current = incoming;
-        setState(incoming);
+    const unsubCustom = subscribeToStudioCustomization((customData, meta) => {
+      if (!meta.fromCache) {
+        setFirestoreLive(true);
+      }
+      customizationRef.current = customData;
+      setState((prev) => {
+        if (!prev) return prev;
+        const updated: GameSessionState = {
+          ...prev,
+          customization: customData,
+        };
+        if (customData) {
+          updated.cards = updated.cards.map((c) => {
+            const defCover = FIXED_EMOJI_COVERS.find((f) => f.cardNumber === c.cardNumber);
+            const customLabel = customData.cardSlots?.[c.cardNumber]?.emojiLabel?.trim();
+            return {
+              ...c,
+              emojiLabel: customLabel || defCover?.emojiLabel || c.emojiLabel,
+            };
+          });
+        }
+        stateRef.current = updated;
         try {
-          localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(incoming));
+          localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(updated));
         } catch {
           // ignore
         }
-      }
+        return updated;
+      });
     });
+
+    return () => {
+      unsubCustom();
+    };
+  }, []);
+
+  // Firestore Real-Time Cloud Listener for Cross-Device Vercel Sync (iPad <-> PC)
+  useEffect(() => {
+    const unsub = subscribeToGameSession(
+      'fanzone-live-session',
+      (incoming, meta) => {
+        if (!incoming || !Array.isArray(incoming.cards)) return;
+        if (!meta.fromCache) {
+          setFirestoreLive(true);
+          setSyncQuotaExceeded(false);
+          setSyncError(null);
+        }
+        if (role === 'host' && meta.hasPendingWrites) {
+          return;
+        }
+
+        // Preserve separate customization doc (or migrate legacy inline customization)
+        if (incoming.customization && !customizationRef.current) {
+          customizationRef.current = incoming.customization;
+        }
+        const mergedIncoming: GameSessionState = {
+          ...incoming,
+          customization: customizationRef.current ?? incoming.customization,
+        };
+
+        const shouldAccept =
+          (role === 'studio' && !meta.fromCache) ||
+          isIncomingStateNewer(mergedIncoming, stateRef.current);
+
+        if (shouldAccept) {
+          // Trigger synchronized audio playback on /studio when Host clicks Play/Stop Audio
+          if (role === 'studio' && mergedIncoming.activeMiniGame) {
+            const audioTs = Number(mergedIncoming.activeMiniGame.audioCommandTimestamp || 0);
+            if (audioTs > lastAudioCmdTimestampRef.current) {
+              lastAudioCmdTimestampRef.current = audioTs;
+              if (mergedIncoming.activeMiniGame.audioPlaying) {
+                triggerAudioPlayback('play', mergedIncoming.activeMiniGame.snapshot?.mediaUrl);
+              } else {
+                triggerAudioPlayback('stop');
+              }
+            }
+          }
+
+          stateRef.current = mergedIncoming;
+          setState(mergedIncoming);
+          try {
+            localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(mergedIncoming));
+          } catch {
+            // ignore
+          }
+        }
+      },
+      (err: any) => {
+        const msg = err?.message || '';
+        if (err?.code === 'resource-exhausted' || msg.includes('Quota')) {
+          setSyncQuotaExceeded(true);
+          setSyncError(
+            'Firestore daily quota exceeded. Live sync paused until quota resets or database is upgraded.'
+          );
+        }
+      }
+    );
 
     return () => {
       if (unsub) unsub();
     };
-  }, []);
+  }, [role, triggerAudioPlayback]);
 
   // Cross-Tab BroadcastChannel + Storage Event Listener for instant 0ms /host <-> /studio sync on Vercel
   useEffect(() => {
@@ -590,10 +735,13 @@ export const GameSyncProvider: React.FC<{
         if (res.ok && ct.includes('application/json')) {
           const data = await res.json();
           if (!data.unchanged && data.state) {
-            const serverRev = Number(data.state.revision || data.revision || 0);
-            if (serverRev === 0 || serverRev >= currentRev) {
-              stateRef.current = data.state;
-              setState(data.state);
+            const merged: GameSessionState = {
+              ...data.state,
+              customization: customizationRef.current ?? data.state.customization,
+            };
+            if (isIncomingStateNewer(merged, stateRef.current)) {
+              stateRef.current = merged;
+              setState(merged);
             }
             if (Array.isArray(data.contentItems) && data.contentItems.length > 0) {
               contentItemsRef.current = data.contentItems;
@@ -612,8 +760,14 @@ export const GameSyncProvider: React.FC<{
         const data = await res.json();
         if (data.unchanged) return;
         if (data.state) {
-          stateRef.current = data.state;
-          setState(data.state);
+          const merged: GameSessionState = {
+            ...data.state,
+            customization: customizationRef.current ?? data.state.customization,
+          };
+          if (isIncomingStateNewer(merged, stateRef.current)) {
+            stateRef.current = merged;
+            setState(merged);
+          }
         }
       }
     } catch {
@@ -627,48 +781,56 @@ export const GameSyncProvider: React.FC<{
     fetchInitialState();
   }, [fetchInitialState]);
 
-  // Continuous heartbeat polling: 300ms on /studio when disconnected, 1000ms even when connected
-  // so remote Studio displays on PC never freeze even if WebSocket is silently dropped by mobile proxies
+  // Heartbeat HTTP fallback polling (skips spamming Vercel serverless when Firestore live listener is active)
   useEffect(() => {
-    const intervalMs = role === 'studio' ? (connected ? 1000 : 300) : connected ? 3000 : 1500;
+    const isVercel =
+      typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app');
+    if (isVercel && firestoreLive) return;
+
+    const intervalMs = role === 'studio' ? (wsConnected ? 2000 : 400) : wsConnected ? 3000 : 1500;
     const pollId = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       fetchInitialState();
     }, intervalMs);
     return () => clearInterval(pollId);
-  }, [connected, role, fetchInitialState]);
+  }, [wsConnected, firestoreLive, role, fetchInitialState]);
 
-  // Local client timer tick when WebSocket is disconnected
+  // Local client timer tick derived from timerStartedAt (ZERO Firestore writes per second)
   useEffect(() => {
-    if (connected) return;
+    if (wsConnected) return;
+    if (!state?.activeMiniGame?.timerRunning) return;
+
     const id = setInterval(() => {
       setState((prev) => {
         if (!prev?.activeMiniGame?.timerRunning) return prev;
-        const nextSec = Math.max(0, prev.activeMiniGame.timerSeconds - 1);
+        const mg = prev.activeMiniGame;
+        const nextSec = mg.timerStartedAt
+          ? Math.max(
+              0,
+              (mg.timerInitialSeconds ?? 30) -
+                Math.floor((Date.now() - mg.timerStartedAt) / 1000)
+            )
+          : Math.max(0, mg.timerSeconds - 1);
+        if (nextSec === mg.timerSeconds && nextSec > 0) return prev;
         const isImg =
-          prev.activeMiniGame.category === 'jersey' ||
-          prev.activeMiniGame.category === 'photo' ||
-          prev.activeMiniGame.category === 'stadium' ||
-          prev.activeMiniGame.category === 'logo';
-        const updated: GameSessionState = {
+          mg.category === 'jersey' ||
+          mg.category === 'photo' ||
+          mg.category === 'stadium' ||
+          mg.category === 'logo';
+        return {
           ...prev,
-          updatedAt: Date.now(),
           activeMiniGame: {
-            ...prev.activeMiniGame,
+            ...mg,
             timerSeconds: nextSec,
             timerRunning: nextSec > 0,
-            imageUnblurred: nextSec === 0 && isImg ? true : prev.activeMiniGame.imageUnblurred,
-            answerRevealed: nextSec === 0 && isImg ? true : prev.activeMiniGame.answerRevealed,
+            imageUnblurred: nextSec === 0 && isImg ? true : mg.imageUnblurred,
+            answerRevealed: nextSec === 0 && isImg ? true : mg.answerRevealed,
           },
         };
-        if (role === 'host') {
-          broadcastLocalSync(updated);
-        }
-        return updated;
       });
-    }, 1000);
+    }, 350);
     return () => clearInterval(id);
-  }, [connected, role, broadcastLocalSync]);
+  }, [wsConnected, state?.activeMiniGame?.timerRunning]);
 
   // WebSocket Real-Time Connection (skips reconnect loop on Vercel serverless hosts where /ws is unsupported)
   useEffect(() => {
@@ -701,7 +863,7 @@ export const GameSyncProvider: React.FC<{
       ws.onopen = () => {
         if (!isMounted) return;
         failCount = 0;
-        setConnected(true);
+        setWsConnected(true);
         if (role === 'host' && ownerAuth.authenticated) {
           ws.send(JSON.stringify({ type: 'auth:upgrade', token: hostToken }));
         }
@@ -740,7 +902,7 @@ export const GameSyncProvider: React.FC<{
 
       ws.onclose = () => {
         if (!isMounted) return;
-        setConnected(false);
+        setWsConnected(false);
         failCount += 1;
         const delay = Math.min(1000 * Math.pow(1.3, Math.min(failCount, 6)), 6000);
         reconnectTimer = setTimeout(connectWebSocket, delay);
@@ -887,12 +1049,14 @@ export const GameSyncProvider: React.FC<{
     }
   };
 
-  // Complete synchronous local game engine so all 16 host actions execute & broadcast in 0ms
+  // Complete synchronous local game engine so all host actions execute & broadcast in 0ms
   const applyLocalAction = useCallback(
     (action: string, payload: Record<string, any> = {}): GameSessionState => {
       let audioCmd: { action: 'play' | 'stop'; mediaUrl?: string } | undefined;
+      let syncCustomization = false;
       const base = stateRef.current || createDefaultSessionState();
       const next: GameSessionState = JSON.parse(JSON.stringify(base));
+      next.revision = (Number(base.revision) || 0) + 1;
       next.updatedAt = Math.max(Date.now(), (base.updatedAt || 0) + 1);
 
       switch (action) {
@@ -1130,6 +1294,8 @@ export const GameSyncProvider: React.FC<{
               miniGameIcons: mergedMiniGameIcons,
               miniGameIconScales: mergedMiniGameIconScales,
             };
+            customizationRef.current = next.customization;
+            syncCustomization = true;
             next.cards.forEach((c) => {
               const defCover = FIXED_EMOJI_COVERS.find((f) => f.cardNumber === c.cardNumber);
               const customLabel = next.customization?.cardSlots?.[c.cardNumber]?.emojiLabel?.trim();
@@ -1140,6 +1306,8 @@ export const GameSyncProvider: React.FC<{
 
           case 'customization:reset': {
             next.customization = undefined;
+            customizationRef.current = undefined;
+            syncCustomization = true;
             next.cards.forEach((c) => {
               const defCover = FIXED_EMOJI_COVERS.find((f) => f.cardNumber === c.cardNumber);
               if (defCover) c.emojiLabel = defCover.emojiLabel;
@@ -1178,6 +1346,8 @@ export const GameSyncProvider: React.FC<{
                     : baseSnap.blurAmount ?? 28,
               };
               mg.timerSeconds = 30;
+              mg.timerInitialSeconds = 30;
+              mg.timerStartedAt = null;
               mg.timerRunning = false;
               mg.answerRevealed = false;
               mg.imageUnblurred = false;
@@ -1198,9 +1368,11 @@ export const GameSyncProvider: React.FC<{
 
           case 'minigame:startTimer':
             if (next.activeMiniGame) {
-              if (next.activeMiniGame.timerSeconds <= 0) {
-                next.activeMiniGame.timerSeconds = 30;
-              }
+              const startSec =
+                next.activeMiniGame.timerSeconds <= 0 ? 30 : next.activeMiniGame.timerSeconds;
+              next.activeMiniGame.timerSeconds = startSec;
+              next.activeMiniGame.timerInitialSeconds = startSec;
+              next.activeMiniGame.timerStartedAt = Date.now();
               next.activeMiniGame.timerRunning = true;
             }
             break;
@@ -1209,6 +1381,8 @@ export const GameSyncProvider: React.FC<{
             if (next.activeMiniGame) {
               next.activeMiniGame.timerRunning = false;
               next.activeMiniGame.timerSeconds = 30;
+              next.activeMiniGame.timerInitialSeconds = 30;
+              next.activeMiniGame.timerStartedAt = null;
               if (!next.activeMiniGame.answerRevealed) {
                 next.activeMiniGame.imageUnblurred = false;
               }
@@ -1218,6 +1392,7 @@ export const GameSyncProvider: React.FC<{
           case 'minigame:revealAnswer':
             if (next.activeMiniGame) {
               next.activeMiniGame.timerRunning = false;
+              next.activeMiniGame.timerStartedAt = null;
               next.activeMiniGame.answerRevealed = true;
               next.activeMiniGame.imageUnblurred = true;
             }
@@ -1378,7 +1553,7 @@ export const GameSyncProvider: React.FC<{
       }
       stateRef.current = next;
       setState(next);
-      broadcastLocalSync(next, undefined, audioCmd);
+      broadcastLocalSync(next, undefined, audioCmd, { syncCustomization });
       return next;
     },
     [contentItems, broadcastLocalSync, triggerAudioPlayback]
@@ -1581,6 +1756,8 @@ export const GameSyncProvider: React.FC<{
         state,
         contentItems,
         connected,
+        syncError,
+        syncQuotaExceeded,
         ownerAuth,
         authError,
         loginWithPasscode,

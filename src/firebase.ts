@@ -19,6 +19,8 @@ import {
   updateContentItemInFirestore,
   syncGameSessionToFirestore,
   subscribeToGameSession,
+  syncStudioCustomizationToFirestore,
+  subscribeToStudioCustomization,
 } from './services/firestoreService';
 
 const app = initializeApp(firebaseConfig);
@@ -119,4 +121,6 @@ export {
   deleteContentItemFromFirestore,
   syncGameSessionToFirestore,
   subscribeToGameSession,
+  syncStudioCustomizationToFirestore,
+  subscribeToStudioCustomization,
 };

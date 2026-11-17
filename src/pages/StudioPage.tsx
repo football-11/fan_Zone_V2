@@ -7,7 +7,7 @@ import { ArrowLeft, Maximize, Minimize, RefreshCw, Radio, Tv } from 'lucide-reac
 import { Link } from 'react-router-dom';
 
 const StudioScreenContent: React.FC = () => {
-  const { state, connected, forceSync } = useGameSync();
+  const { state, connected, syncQuotaExceeded, forceSync } = useGameSync();
   const [showToolbar, setShowToolbar] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -174,11 +174,19 @@ const StudioScreenContent: React.FC = () => {
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#081A2C]/90 border border-[#38BDF8]/30 text-xs font-['JetBrains_Mono'] shadow-md">
             <span
               className={`w-2 h-2 rounded-full ${
-                connected ? 'bg-emerald-400 animate-pulse' : 'bg-[#4DB8FF]'
+                syncQuotaExceeded
+                  ? 'bg-rose-400'
+                  : connected
+                  ? 'bg-emerald-400 animate-pulse'
+                  : 'bg-[#4DB8FF]'
               }`}
             />
             <span className="text-slate-300">
-              {connected ? 'BROADCAST SYNC LIVE' : 'AUTO-POLL SYNC ACTIVE'}
+              {syncQuotaExceeded
+                ? 'FIRESTORE QUOTA EXCEEDED'
+                : connected
+                ? 'BROADCAST SYNC LIVE'
+                : 'AUTO-POLL SYNC ACTIVE'}
             </span>
           </div>
 

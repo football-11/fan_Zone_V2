@@ -174,6 +174,7 @@ interface GameSessionState {
   customization?: StudioCustomization;
   usedItemIds?: string[];
   autoSelectionEnabled?: boolean;
+  revision?: number;
   updatedAt: number;
 }
 
@@ -442,7 +443,8 @@ function getDb(): ServerlessDB {
       boardDeckId: 1,
       cards: createShuffledCards(),
       activeMiniGame: null,
-      updatedAt: Date.now(),
+      revision: 0,
+      updatedAt: 0,
     },
     contentItems: createDefaultContentItems(),
     timerStartedAt: null,
@@ -454,6 +456,7 @@ function getDb(): ServerlessDB {
 
 function saveDb(db: ServerlessDB, preserveTimestamp = false) {
   if (!preserveTimestamp) {
+    db.session.revision = (Number(db.session.revision) || 0) + 1;
     db.session.updatedAt = Math.max(Date.now(), (db.session.updatedAt || 0) + 1);
   }
   memoryDb = db;
@@ -656,14 +659,28 @@ export default async function handler(req: any, res: any) {
   // 1. GET /api/studio/state
   if (method === 'GET' && routePath === '/api/studio/state') {
     const db = getDb();
+    const revParam = Number(parsedUrl.searchParams.get('rev') || 0);
     const sinceParam = Number(parsedUrl.searchParams.get('since') || 0);
+    const serverRev = Number(db.session.revision || 0);
     const serverUpdatedAt = db.session.updatedAt || 0;
     const timerActive = Boolean(db.session.activeMiniGame?.timerRunning);
-    if (sinceParam > 0 && !timerActive && serverUpdatedAt === sinceParam) {
-      return sendJson(res, 200, { unchanged: true, updatedAt: serverUpdatedAt });
+    if (serverRev === 0 && serverUpdatedAt === 0) {
+      return sendJson(res, 200, { unchanged: true, revision: 0, updatedAt: 0 });
+    }
+    if (
+      !timerActive &&
+      ((revParam > 0 && serverRev <= revParam) ||
+        (sinceParam > 0 && serverUpdatedAt <= sinceParam))
+    ) {
+      return sendJson(res, 200, {
+        unchanged: true,
+        revision: serverRev,
+        updatedAt: serverUpdatedAt,
+      });
     }
     return sendJson(res, 200, {
       unchanged: false,
+      revision: serverRev,
       updatedAt: serverUpdatedAt,
       state: sanitizeStateForStudio(db.session),
     });
@@ -708,14 +725,28 @@ export default async function handler(req: any, res: any) {
   if (method === 'GET' && routePath === '/api/host/state') {
     if (!isAuthorizedRequest(req)) return sendJson(res, 401, { error: 'Unauthorized' });
     const db = getDb();
+    const revParam = Number(parsedUrl.searchParams.get('rev') || 0);
     const sinceParam = Number(parsedUrl.searchParams.get('since') || 0);
+    const serverRev = Number(db.session.revision || 0);
     const serverUpdatedAt = db.session.updatedAt || 0;
     const timerActive = Boolean(db.session.activeMiniGame?.timerRunning);
-    if (sinceParam > 0 && !timerActive && serverUpdatedAt <= sinceParam) {
-      return sendJson(res, 200, { unchanged: true, updatedAt: serverUpdatedAt });
+    if (serverRev === 0 && serverUpdatedAt === 0) {
+      return sendJson(res, 200, { unchanged: true, revision: 0, updatedAt: 0 });
+    }
+    if (
+      !timerActive &&
+      ((revParam > 0 && serverRev <= revParam) ||
+        (sinceParam > 0 && serverUpdatedAt <= sinceParam))
+    ) {
+      return sendJson(res, 200, {
+        unchanged: true,
+        revision: serverRev,
+        updatedAt: serverUpdatedAt,
+      });
     }
     return sendJson(res, 200, {
       unchanged: false,
+      revision: serverRev,
       updatedAt: serverUpdatedAt,
       state: db.session,
       contentItems: db.contentItems,

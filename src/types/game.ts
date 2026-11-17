@@ -110,6 +110,8 @@ export interface ActiveMiniGameState {
   snapshot: ActiveRoundSnapshot | null;
   timerSeconds: number; // 0..30
   timerRunning: boolean;
+  timerStartedAt?: number | null;
+  timerInitialSeconds?: number;
   answerRevealed: boolean;
   imageUnblurred: boolean;
   audioPlaying: boolean;

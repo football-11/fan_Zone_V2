@@ -27,7 +27,8 @@ import { ContentItem, resolveCustomMiniGameIcon } from '../types/game';
 import { resolveBzzoiroPlayerImageUrl } from '../data/bzzoiroSports';
 
 const HostConsoleBody: React.FC = () => {
-  const { state, contentItems, logoutOwner, sendHostAction } = useGameSync();
+  const { state, contentItems, syncError, syncQuotaExceeded, logoutOwner, sendHostAction } =
+    useGameSync();
 
   const [confirmNewGame, setConfirmNewGame] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string>('');
@@ -191,6 +192,25 @@ const HostConsoleBody: React.FC = () => {
           </button>
         </div>
       </header>
+
+      {(syncQuotaExceeded || syncError) && (
+        <div className="relative z-20 shrink-0 mx-3 mt-2 px-3 py-1.5 rounded-xl bg-[#3B1324]/90 border border-[#FB6F84]/60 text-[11px] text-rose-100 flex flex-wrap items-center justify-between gap-2">
+          <span className="font-semibold">
+            {syncError ||
+              'Cloud sync error: cross-device Studio updates may not reach the Studio Display.'}
+          </span>
+          {syncQuotaExceeded && (
+            <a
+              href="https://console.firebase.google.com/project/sixth-now-436011-k1/firestore/databases/ai-studio-fanzonegame-953686fd-8b37-4d48-bf39-8cd493029a55/data?openUpgradeDialog=true"
+              target="_blank"
+              rel="noreferrer"
+              className="px-2.5 py-1 rounded-lg bg-[#FB6F84] text-slate-950 font-extrabold whitespace-nowrap shrink-0"
+            >
+              Upgrade Firestore Quota
+            </a>
+          )}
+        </div>
+      )}
 
       {/* Zero-Scroll iPad Landscape Two-Column Studio Cockpit */}
       <main className="relative z-10 flex-1 min-h-0 max-w-[1640px] w-full mx-auto p-2.5 lg:p-3 xl:p-4 grid grid-cols-1 lg:grid-cols-12 gap-2.5 lg:gap-3 xl:gap-4 lg:overflow-hidden">

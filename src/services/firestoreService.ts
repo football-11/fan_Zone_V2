@@ -14,7 +14,7 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-import { ContentCategory, ContentItem, GameSessionState } from '../types/game';
+import { ContentCategory, ContentItem, GameSessionState, StudioCustomization } from '../types/game';
 
 // Verbatim constants synced with firebase-blueprint.json and firestore.rules
 export const ID_PATTERN_REGEX = /^[a-zA-Z0-9_\-]+$/;
@@ -306,21 +306,88 @@ export async function deleteContentItemFromFirestore(itemId: string): Promise<vo
   }
 }
 
+export interface FirestoreSyncResult {
+  ok: boolean;
+  code?: string;
+  message?: string;
+}
+
+export interface SnapshotSyncMeta {
+  fromCache: boolean;
+  hasPendingWrites: boolean;
+}
+
+export const CUSTOMIZATION_DOC_ID = 'fanzone-live-customization';
+
 /**
- * Persists the live GameSessionState to Firestore (/gameSessions/{sessionId}) for cross-device Vercel sync.
+ * Persists lightweight live GameSessionState (without 396KB customization blob)
+ * to Firestore (/gameSessions/{sessionId}) for low-quota cross-device Vercel sync.
  */
-export async function syncGameSessionToFirestore(session: GameSessionState): Promise<void> {
+export async function syncGameSessionToFirestore(
+  session: GameSessionState
+): Promise<FirestoreSyncResult> {
   const sessionId = sanitizeFirestoreId(session.sessionId || 'fanzone-live-session');
-  const path = `gameSessions/${sessionId}`;
   try {
-    // Deep clone state to ensure pure JSON serialization
+    // Deep clone state to ensure pure JSON serialization & strip heavy customization blob
     const serialized: GameSessionState = JSON.parse(JSON.stringify(session));
-    serialized.updatedAt = Date.now();
+    delete serialized.customization;
+    serialized.updatedAt = Math.max(Date.now(), Number(serialized.updatedAt || 0));
     await setDoc(doc(db, 'gameSessions', sessionId), serialized);
-  } catch (error) {
-    // Non-blocking fire-and-forget for live session updates
-    console.warn('Firestore session sync warning:', error);
+    return { ok: true };
+  } catch (error: any) {
+    const code = String(error?.code || '');
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn('Firestore session sync warning:', code, message);
+    return { ok: false, code, message };
   }
+}
+
+/**
+ * Persists StudioCustomization (logos, icons, theme) separately so live gameplay actions
+ * do not rewrite ~400KB of static base64 images on every button press.
+ */
+export async function syncStudioCustomizationToFirestore(
+  customization: StudioCustomization | undefined | null
+): Promise<FirestoreSyncResult> {
+  try {
+    const payload = {
+      sessionId: CUSTOMIZATION_DOC_ID,
+      customization: customization ? JSON.parse(JSON.stringify(customization)) : null,
+      updatedAt: Date.now(),
+    };
+    await setDoc(doc(db, 'gameSessions', CUSTOMIZATION_DOC_ID), payload);
+    return { ok: true };
+  } catch (error: any) {
+    const code = String(error?.code || '');
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn('Firestore customization sync warning:', code, message);
+    return { ok: false, code, message };
+  }
+}
+
+/**
+ * Subscribes in real time to StudioCustomization updates from Firestore (/gameSessions/fanzone-live-customization).
+ */
+export function subscribeToStudioCustomization(
+  onUpdate: (customization: StudioCustomization | undefined, meta: SnapshotSyncMeta) => void,
+  onError?: (error: unknown) => void
+): Unsubscribe {
+  return onSnapshot(
+    doc(db, 'gameSessions', CUSTOMIZATION_DOC_ID),
+    (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as { customization?: StudioCustomization | null };
+        onUpdate(data.customization || undefined, {
+          fromCache: docSnap.metadata.fromCache,
+          hasPendingWrites: docSnap.metadata.hasPendingWrites,
+        });
+      }
+    },
+    (error) => {
+      console.warn('Firestore customization snapshot error:', error);
+      if (onError) onError(error);
+    }
+  );
 }
 
 /**
@@ -328,22 +395,26 @@ export async function syncGameSessionToFirestore(session: GameSessionState): Pro
  */
 export function subscribeToGameSession(
   sessionId: string,
-  onUpdate: (session: GameSessionState) => void
+  onUpdate: (session: GameSessionState, meta: SnapshotSyncMeta) => void,
+  onError?: (error: unknown) => void
 ): Unsubscribe {
   const safeId = sanitizeFirestoreId(sessionId || 'fanzone-live-session');
-  const path = `gameSessions/${safeId}`;
   return onSnapshot(
     doc(db, 'gameSessions', safeId),
     (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as GameSessionState;
         if (data && Array.isArray(data.cards)) {
-          onUpdate(data);
+          onUpdate(data, {
+            fromCache: docSnap.metadata.fromCache,
+            hasPendingWrites: docSnap.metadata.hasPendingWrites,
+          });
         }
       }
     },
     (error) => {
       console.warn('Firestore session snapshot listener error:', error);
+      if (onError) onError(error);
     }
   );
 }
